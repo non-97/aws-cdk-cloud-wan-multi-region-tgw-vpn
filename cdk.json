@@ -1,5 +1,5 @@
 {
-  "app": "npx tsc && npx tsx bin/aws-cdk-cloud-wan-multi-region-tgw-vpn.ts",
+  "app": "node_modules/.bin/tsc && node_modules/.bin/tsx bin/aws-cdk-cloud-wan-multi-region-tgw-vpn.ts",
   "watch": {
     "include": [
       "**"
@@ -101,6 +101,7 @@
       "aws",
       "aws-cn"
     ],
+    "@aws-cdk/core:validateAgainstDefaultRules": true,
     "@aws-cdk/core:validateSnapshotRemovalPolicy": true,
     "@aws-cdk/custom-resources:logApiResponseDataPropertyTrueDefault": false,
     "@aws-cdk/customresources:installLatestAwsSdkDefault": false,
