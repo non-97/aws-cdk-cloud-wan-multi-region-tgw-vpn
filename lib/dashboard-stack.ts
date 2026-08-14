@@ -17,12 +17,26 @@ import type { RegionConfig } from './network-config';
  * クオート付きで `filter tcpFlags = "0"` と文字列比較しても、本来一致する
  * はずの行の過半数が結果から欠落する不具合を実機で確認した (`parse` の
  * 抽出結果自体は `display` で見ると正しいのに、同じ値への `filter` だけが
- * 欠落する。sort / display の有無、時間経過による取り込み遅延のいずれとも
- * 無関係で、同一データに対して再現する)。`filter @message like /^(?:\S+\s+)
- * {31}0\s/` (`parse` を経由しない、生ログへの正規表現一致) に置き換えると
- * 欠落なく安定することを実機で複数回確認済み。srcAddr / dstAddr /
- * flowDirection の表示用抽出は `filter` の対象にしないので `parse` のままで
- * 問題ない (`parse` して `display` するだけなら値は正しく出る)。
+ * 欠落する)。`filter @message like /^(?:\S+\s+){31}0\s/`
+ * (`parse` を経由しない、生ログへの正規表現一致) に置き換えても、
+ * **有界の繰り返し量指定 `{31}` を使う限り欠落が再発する** (2026-08-13
+ * に別データで確認。同一 ICMP 往復のうち行き方向の行だけ一致し帰り方向の
+ * 行は一致しない欠落が、CloudWatch API の `recordsMatched` 自体の値で
+ * 裏取りできた。フィールド数・値は往復どちらも文字列として完全に同一)。
+ * **回避策は `{31}` のような有界の繰り返し量指定を使わず、対象フィールドの
+ * 前後にある固定文字列のリテラル一致に置き換えること。** このプロジェクトの
+ * TGW Flow Log フォーマット (`transit-gateway.ts` の `TGW_FLOW_LOG_FORMAT`)
+ * では、`tcp-flags` (32番目) の直前の4フィールド (`packets-lost-*`、
+ * 28〜31番目) が正常系では常に `0 0 0 0` になるため、`type` (27番目、
+ * 常に `IPv4`) から続けて `IPv4 0 0 0 0 0` というリテラル部分一致にすれば
+ * 位置カウントを使わずに済む。この形で全4行が正しく揃うことを実機で確認済み
+ * (詳細はスキル aws-verification-gotchas の references/misc.md 参照)。
+ * **既知の限界**: 実際にパケットロス (`packets-lost-*` のいずれかが非0) が
+ * 記録された行は、tcp-flags が 0 であってもこのリテラルに一致せず
+ * 拾えない。この用途 (ping 等 SYN/ACK/FIN を持たない通信の把握) では
+ * 許容している。`parse` 側の位置カウント (`{16}` / `{15}`) は今回の欠落と
+ * 無関係であることを確認済みで (全4行で `srcAddr` / `dstAddr` /
+ * `flowDirection` とも正しく抽出される)、変更していない。
  *
  * 表示列を絞るには `display` を使う。`parse` で作った ephemeral field
  * (`srcAddr` 等) を後段の `fields` で再指定すると
@@ -39,7 +53,7 @@ import type { RegionConfig } from './network-config';
  */
 const TGW_FLOW_LOG_QUERY = [
   'fields @timestamp, @logStream, @message',
-  'filter @message like /^(?:\\S+\\s+){31}0\\s/',
+  'filter @message like /IPv4 0 0 0 0 0/',
   'parse @message /^(?:\\S+\\s+){16}(?<srcAddr>\\S+)\\s+(?<dstAddr>\\S+)\\s+(?:\\S+\\s+){15}(?<flowDirection>\\S+)/',
   'display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message',
   'sort @timestamp desc, srcAddr asc',
@@ -73,6 +87,11 @@ export class DashboardStack extends cdk.Stack {
     const dashboard = new cloudwatch.Dashboard(this, 'Dashboard', {
       dashboardName: 'CloudWanRouting-TgwFlowLogs',
     });
+    // 検証環境を削除した後もウィジェット定義ごと参照できるように残す。
+    // 参照先の TGW Flow Logs ロググループ自体も RemovalPolicy.RETAIN 済み
+    // (transit-gateway.ts / site-to-site-vpn.ts) なので、ログデータと
+    // ダッシュボードの両方が環境削除後も参照可能になる。
+    dashboard.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
 
     props.regions.forEach(({ regionConfig, flowLogGroupName }) => {
       dashboard.addWidgets(

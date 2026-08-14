@@ -1,0 +1,153 @@
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "64520-64534"
+    ],
+    "edge-locations": [
+      {
+        "location": "ap-northeast-1",
+        "asn": 64520
+      },
+      {
+        "location": "ap-northeast-3",
+        "asn": 64521
+      },
+      {
+        "location": "us-east-1",
+        "asn": 64522
+      },
+      {
+        "location": "us-west-2",
+        "asn": 64523
+      }
+    ]
+  },
+  "network-function-groups": [],
+  "segments": [
+    {
+      "name": "verification",
+      "edge-locations": [
+        "ap-northeast-1",
+        "ap-northeast-3",
+        "us-east-1",
+        "us-west-2"
+      ],
+      "require-attachment-acceptance": false,
+      "isolate-attachments": false
+    }
+  ],
+  "attachment-policies": [
+    {
+      "description": "attach verification segment by tag",
+      "rule-number": 100,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "cloudwan-seg",
+          "value": "verification"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "verification"
+      }
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "associate-routing-policy",
+      "segment": "verification",
+      "edge-location-association": {
+        "edge-location": "ap-northeast-1",
+        "peer-edge-location": "us-west-2",
+        "routing-policy-names": [
+          "deprioritizeSecondaryTransit"
+        ]
+      }
+    },
+    {
+      "action": "associate-routing-policy",
+      "segment": "verification",
+      "edge-location-association": {
+        "edge-location": "ap-northeast-3",
+        "peer-edge-location": "us-west-2",
+        "routing-policy-names": [
+          "deprioritizeSecondaryTransit"
+        ]
+      }
+    },
+    {
+      "action": "associate-routing-policy",
+      "segment": "verification",
+      "edge-location-association": {
+        "edge-location": "us-east-1",
+        "peer-edge-location": "ap-northeast-3",
+        "routing-policy-names": [
+          "deprioritizeSecondaryTransit"
+        ]
+      }
+    },
+    {
+      "action": "associate-routing-policy",
+      "segment": "verification",
+      "edge-location-association": {
+        "edge-location": "us-west-2",
+        "peer-edge-location": "ap-northeast-3",
+        "routing-policy-names": [
+          "deprioritizeSecondaryTransit"
+        ]
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "deprioritizeSecondaryTransit",
+      "routing-policy-number": 100,
+      "routing-policy-description": "Prepend-ASN-on-routes-that-transited-a-secondary-CNE",
+      "routing-policy-direction": "inbound",
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                4200000001
+              ]
+            },
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 64521
+              }
+            ]
+          }
+        },
+        {
+          "rule-number": 200,
+          "rule-definition": {
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                4200000001
+              ]
+            },
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 64523
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

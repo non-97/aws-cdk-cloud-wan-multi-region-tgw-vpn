@@ -1,0 +1,83 @@
+> scripts/get-endpoints.sh
+==============================
+ EC2 Instances (Private / Public IP)
+==============================
+
+--- ap-northeast-1 (CloudWanRoutingRegionStack-apne1, 4 instances) ---
+NAME                                                         INSTANCE-ID          AZ               PRIVATE-IP    PUBLIC-IP      VPC-ID                 SSM
+(VPN Router)                                                 i-0028a8e02fcff0106  ap-northeast-1a  10.100.0.105  52.199.238.34  vpc-04d9c23ecdb05ddb9  yes
+CloudWanRoutingRegionStack-apne1/CloudWanDirectVpc/Instance  i-0583f2da4832f7364  ap-northeast-1a  10.0.0.170    3.112.3.141    vpc-07fc053807baaa8f5  yes
+CloudWanRoutingRegionStack-apne1/OnPremisesVpc/Instance      i-00b7b89e50e5df9d2  ap-northeast-1a  10.100.1.78   -              vpc-04d9c23ecdb05ddb9  no
+CloudWanRoutingRegionStack-apne1/TgwVpc/Instance             i-0b8cedda34683dbd7  ap-northeast-1a  10.10.0.154   57.180.21.229  vpc-00b2d307c124a2ff6  yes
+
+--- ap-northeast-3 (CloudWanRoutingRegionStack-apne3, 2 instances) ---
+NAME                                                         INSTANCE-ID          AZ               PRIVATE-IP   PUBLIC-IP      VPC-ID                 SSM
+CloudWanRoutingRegionStack-apne3/CloudWanDirectVpc/Instance  i-09b61565dc9f2a581  ap-northeast-3a  10.1.0.182   15.168.11.255  vpc-040cf732ba323c70d  yes
+CloudWanRoutingRegionStack-apne3/TgwVpc/Instance             i-093791ade7640b4ce  ap-northeast-3a  10.11.0.131  56.155.87.74   vpc-064cb63acc84e7e95  yes
+
+--- us-east-1 (CloudWanRoutingRegionStack-use1, 4 instances) ---
+NAME                                                        INSTANCE-ID          AZ          PRIVATE-IP   PUBLIC-IP       VPC-ID                 SSM
+(VPN Router)                                                i-0bf00007db510ba99  us-east-1a  10.200.0.79  100.62.197.19   vpc-0468dd16f2c5caa08  yes
+CloudWanRoutingRegionStack-use1/CloudWanDirectVpc/Instance  i-0a46b627b5c791566  us-east-1a  10.2.0.17    34.235.147.156  vpc-05b8c9a180ae923d3  yes
+CloudWanRoutingRegionStack-use1/OnPremisesVpc/Instance      i-03ffc8a3136e2bb76  us-east-1a  10.200.1.82  -               vpc-0468dd16f2c5caa08  no
+CloudWanRoutingRegionStack-use1/TgwVpc/Instance             i-061109da30c0cb63c  us-east-1a  10.12.0.172  100.54.151.104  vpc-0336d8c113f6374f7  yes
+
+--- us-west-2 (CloudWanRoutingRegionStack-usw2, 2 instances) ---
+NAME                                                        INSTANCE-ID          AZ          PRIVATE-IP   PUBLIC-IP      VPC-ID                 SSM
+CloudWanRoutingRegionStack-usw2/CloudWanDirectVpc/Instance  i-0080b0941fc0242a3  us-west-2a  10.3.0.94    16.147.30.210  vpc-0115d331c8ba78b23  yes
+CloudWanRoutingRegionStack-usw2/TgwVpc/Instance             i-096e36b5ae4c448c3  us-west-2a  10.13.0.202  44.249.127.51  vpc-060678dee6be00a54  yes
+
+==============================
+ Elastic IP (VPN Router)
+==============================
+
+natGateways: 0 のため NAT Gateway は存在しない。VPN ルーターの eth0 に
+紐づく Elastic IP のみを表示する (CustomerGateway の IP と一致するはず)。
+
+--- ap-northeast-1 (CloudWanRoutingRegionStack-apne1, 1 Elastic IP) ---
+INSTANCE-ID          PUBLIC-IP      PRIVATE-IP    ALLOCATION-ID
+i-0028a8e02fcff0106  52.199.238.34  10.100.0.105  eipalloc-0857c8d46fc637811
+
+--- us-east-1 (CloudWanRoutingRegionStack-use1, 1 Elastic IP) ---
+INSTANCE-ID          PUBLIC-IP      PRIVATE-IP   ALLOCATION-ID
+i-0bf00007db510ba99  100.62.197.19  10.200.0.79  eipalloc-006a6d3368fab61b9
+
+==============================
+ Transit Gateway (ID / ASN) と アタッチメント
+==============================
+
+--- ap-northeast-1 (CloudWanRoutingRegionStack-apne1) ---
+TGW-ID                 ASN   STATE
+tgw-0565e9ba8d97d80b8  null  available
+
+ATTACHMENT-ID                 RESOURCE-TYPE  RESOURCE-ID                     STATE
+tgw-attach-02b4a67587bb1ba5d  peering        core-network-0b33f47bb21243b3f  available
+tgw-attach-0e46b50ef30d6ce1b  vpc            vpc-00b2d307c124a2ff6           available
+tgw-attach-0b77f83cd6bfcffe6  vpn            vpn-05d2680462c52abdf           available
+
+--- ap-northeast-3 (CloudWanRoutingRegionStack-apne3) ---
+TGW-ID                 ASN   STATE
+tgw-0a5e98f651e9e381b  null  available
+
+ATTACHMENT-ID                 RESOURCE-TYPE  RESOURCE-ID                     STATE
+tgw-attach-0fc9da244432d6b87  peering        core-network-0b33f47bb21243b3f  available
+tgw-attach-086c95276ba9d44c5  vpc            vpc-064cb63acc84e7e95           available
+tgw-attach-0cbf4a91e768d0e6b  vpn            vpn-03352b9b58de4f1db           available
+
+--- us-east-1 (CloudWanRoutingRegionStack-use1) ---
+TGW-ID                 ASN   STATE
+tgw-02953f751aed5e319  null  available
+
+ATTACHMENT-ID                 RESOURCE-TYPE  RESOURCE-ID                     STATE
+tgw-attach-07a54dc981bb0b163  peering        core-network-0b33f47bb21243b3f  available
+tgw-attach-05bec52cc43c653ba  vpc            vpc-0336d8c113f6374f7           available
+tgw-attach-07e8d10cb3f063d0d  vpn            vpn-072c11a1b74471ae7           available
+
+--- us-west-2 (CloudWanRoutingRegionStack-usw2) ---
+TGW-ID                 ASN   STATE
+tgw-01876ddfdd4e6d91f  null  available
+
+ATTACHMENT-ID                 RESOURCE-TYPE  RESOURCE-ID                     STATE
+tgw-attach-061c689b4e292be85  peering        core-network-0b33f47bb21243b3f  available
+tgw-attach-0e2ffad49350ccb44  vpc            vpc-060678dee6be00a54           available
+tgw-attach-059f5273cad845974  vpn            vpn-08b552ca015876724           available

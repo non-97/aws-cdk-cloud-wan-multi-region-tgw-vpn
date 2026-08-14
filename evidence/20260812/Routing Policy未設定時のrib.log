@@ -1,0 +1,134 @@
+> ./scripts/get-rib.sh
+CoreNetwork=core-network-09b6f7256928937e4  (NM_REGION=us-west-2)
+===== RIB  SEGMENT=verification  EDGE=ap-northeast-1 =====
+--------------------------------------------------------------------------------------------------------------------------------------------
+|                                                     ListCoreNetworkRoutingInformation                                                    |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|         AsPath          | Comm  |      Edge       | LocalPref  |  Med  |    Prefix      |      Seg       |             Type              |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|                         |       |  None           |  None      |  None |  10.0.0.0/16   |  None          |  vpc                          |
+|  64522 64521            |       |  us-east-1      |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64522 64521 64513      |       |  us-east-1      |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64522 64514            |       |  us-east-1      |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64522 64523 64515      |       |  us-east-1      |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64522                  |       |  us-east-1      |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64522 64514 65001      |       |  us-east-1      |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64522 64523            |       |  us-east-1      |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
+|  64512                  |       |  None           |  0         |  100  |  10.10.0.0/16  |  None          |  transit-gateway-route-table  |
+|  64512 65000            |       |  None           |  0         |  100  |  10.100.0.0/16 |  None          |  transit-gateway-route-table  |
+|  64523 64521            |       |  us-west-2      |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64523 64521 64513 65000|       |  us-west-2      |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64523 64521 64513      |       |  us-west-2      |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64523 64522 64514      |       |  us-west-2      |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64523 64515            |       |  us-west-2      |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64523 64522            |       |  us-west-2      |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64523 64515 65001      |       |  us-west-2      |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64523                  |       |  us-west-2      |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
+|  64521                  |       |  ap-northeast-3 |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64521 64513 65000      |       |  ap-northeast-3 |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64521 64513            |       |  ap-northeast-3 |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64521 64522 64514      |       |  ap-northeast-3 |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64521 64523 64515      |       |  ap-northeast-3 |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64521 64522            |       |  ap-northeast-3 |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64521 64523 64515 65001|       |  ap-northeast-3 |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64521 64523            |       |  ap-northeast-3 |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+===== RIB  SEGMENT=verification  EDGE=ap-northeast-3 =====
+--------------------------------------------------------------------------------------------------------------------------------------------
+|                                                     ListCoreNetworkRoutingInformation                                                    |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|         AsPath          | Comm  |      Edge       | LocalPref  |  Med  |    Prefix      |      Seg       |             Type              |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|                         |       |  None           |  None      |  None |  10.1.0.0/16   |  None          |  vpc                          |
+|  64520                  |       |  ap-northeast-1 |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64520 64512            |       |  ap-northeast-1 |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64520 64512 65000      |       |  ap-northeast-1 |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64520 64522 64514      |       |  ap-northeast-1 |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64520 64523 64515      |       |  ap-northeast-1 |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64520 64522            |       |  ap-northeast-1 |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64520 64522 64514 65001|       |  ap-northeast-1 |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64520 64523            |       |  ap-northeast-1 |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
+|  64522 64520            |       |  us-east-1      |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64522 64520 64512      |       |  us-east-1      |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64522 64520 64512 65000|       |  us-east-1      |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64522 64514            |       |  us-east-1      |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64522 64523 64515      |       |  us-east-1      |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64522                  |       |  us-east-1      |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64522 64514 65001      |       |  us-east-1      |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64522 64523            |       |  us-east-1      |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
+|  64513 65000            |       |  None           |  0         |  100  |  10.100.0.0/16 |  None          |  transit-gateway-route-table  |
+|  64513                  |       |  None           |  0         |  100  |  10.11.0.0/16  |  None          |  transit-gateway-route-table  |
+|  64523 64520            |       |  us-west-2      |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64523 64520 64512      |       |  us-west-2      |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64523 64522 64514      |       |  us-west-2      |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64523 64515            |       |  us-west-2      |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64523 64522            |       |  us-west-2      |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64523 64515 65001      |       |  us-west-2      |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64523                  |       |  us-west-2      |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+===== RIB  SEGMENT=verification  EDGE=us-east-1 =====
+--------------------------------------------------------------------------------------------------------------------------------------------
+|                                                     ListCoreNetworkRoutingInformation                                                    |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|         AsPath          | Comm  |      Edge       | LocalPref  |  Med  |    Prefix      |      Seg       |             Type              |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|                         |       |  None           |  None      |  None |  10.2.0.0/16   |  None          |  vpc                          |
+|  64521 64520            |       |  ap-northeast-3 |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64521                  |       |  ap-northeast-3 |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64521 64520 64512      |       |  ap-northeast-3 |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64521 64513 65000      |       |  ap-northeast-3 |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64521 64513            |       |  ap-northeast-3 |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64521 64523 64515      |       |  ap-northeast-3 |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64521 64523 64515 65001|       |  ap-northeast-3 |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64521 64523            |       |  ap-northeast-3 |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
+|  64523 64520            |       |  us-west-2      |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64523 64521            |       |  us-west-2      |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64523 64520 64512      |       |  us-west-2      |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64523 64521 64513 65000|       |  us-west-2      |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64523 64521 64513      |       |  us-west-2      |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64523 64515            |       |  us-west-2      |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64523 64515 65001      |       |  us-west-2      |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64523                  |       |  us-west-2      |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
+|  64514                  |       |  None           |  0         |  100  |  10.12.0.0/16  |  None          |  transit-gateway-route-table  |
+|  64514 65001            |       |  None           |  0         |  100  |  10.200.0.0/16 |  None          |  transit-gateway-route-table  |
+|  64520                  |       |  ap-northeast-1 |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64520 64521            |       |  ap-northeast-1 |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64520 64512            |       |  ap-northeast-1 |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64520 64512 65000      |       |  ap-northeast-1 |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64520 64521 64513      |       |  ap-northeast-1 |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64520 64523 64515      |       |  ap-northeast-1 |  0         |  100  |  10.13.0.0/16  |  verification  |  None                         |
+|  64520 64523            |       |  ap-northeast-1 |  0         |  100  |  10.3.0.0/16   |  verification  |  None                         |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+===== RIB  SEGMENT=verification  EDGE=us-west-2 =====
+--------------------------------------------------------------------------------------------------------------------------------------------
+|                                                     ListCoreNetworkRoutingInformation                                                    |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|         AsPath          | Comm  |      Edge       | LocalPref  |  Med  |    Prefix      |      Seg       |             Type              |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+
+|                         |       |  None           |  None      |  None |  10.3.0.0/16   |  None          |  vpc                          |
+|  64520                  |       |  ap-northeast-1 |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64520 64521            |       |  ap-northeast-1 |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64520 64512            |       |  ap-northeast-1 |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64520 64512 65000      |       |  ap-northeast-1 |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64520 64521 64513      |       |  ap-northeast-1 |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64520 64522 64514      |       |  ap-northeast-1 |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64520 64522            |       |  ap-northeast-1 |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64520 64522 64514 65001|       |  ap-northeast-1 |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64521 64520            |       |  ap-northeast-3 |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64521                  |       |  ap-northeast-3 |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64521 64520 64512      |       |  ap-northeast-3 |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64521 64513 65000      |       |  ap-northeast-3 |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64521 64513            |       |  ap-northeast-3 |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64521 64522 64514      |       |  ap-northeast-3 |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64521 64522            |       |  ap-northeast-3 |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64522 64520            |       |  us-east-1      |  0         |  100  |  10.0.0.0/16   |  verification  |  None                         |
+|  64522 64521            |       |  us-east-1      |  0         |  100  |  10.1.0.0/16   |  verification  |  None                         |
+|  64522 64520 64512      |       |  us-east-1      |  0         |  100  |  10.10.0.0/16  |  verification  |  None                         |
+|  64522 64520 64512 65000|       |  us-east-1      |  0         |  100  |  10.100.0.0/16 |  verification  |  None                         |
+|  64522 64521 64513      |       |  us-east-1      |  0         |  100  |  10.11.0.0/16  |  verification  |  None                         |
+|  64522 64514            |       |  us-east-1      |  0         |  100  |  10.12.0.0/16  |  verification  |  None                         |
+|  64522                  |       |  us-east-1      |  0         |  100  |  10.2.0.0/16   |  verification  |  None                         |
+|  64522 64514 65001      |       |  us-east-1      |  0         |  100  |  10.200.0.0/16 |  verification  |  None                         |
+|  64515                  |       |  None           |  0         |  100  |  10.13.0.0/16  |  None          |  transit-gateway-route-table  |
+|  64515 65001            |       |  None           |  0         |  100  |  10.200.0.0/16 |  None          |  transit-gateway-route-table  |
++-------------------------+-------+-----------------+------------+-------+----------------+----------------+-------------------------------+

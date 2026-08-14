@@ -243,11 +243,31 @@ export const regionConfigOf = (
   return found;
 };
 
-/** secondary リージョンの CNE ASN の一覧。Routing Policy のルール生成に使う */
-export const secondaryCneAsns = (): readonly number[] =>
-  REGION_CONFIGS.filter((r) => r.onPremisesRole === "secondary").map(
-    (r) => r.cneAsn
+/**
+ * secondary CNE の ASN と、オンプレミス各拠点のルーターの ASN の全組み合わせ。
+ * Routing Policy のルール生成に使う。オンプレミス側ルーターの ASN を条件に含めることで、
+ * 「secondary CNE を経由した経路」と「secondary CNE 自身が発信した経路」を区別する
+ * (前者だけを対象にしたい。詳細は core-network-policy.ts のコメント参照)。
+ * secondary はどの拠点宛の経路であっても中継されると同様に望ましくないため、
+ * 「自分のペアの拠点だけ」ではなく全拠点との組み合わせを生成する
+ */
+export const secondaryCneOnPremisesGuardAsns = (): readonly {
+  readonly asn: number;
+  readonly onPremisesRouterAsn: number;
+}[] => {
+  const secondaryAsns = REGION_CONFIGS.filter(
+    (r) => r.onPremisesRole === "secondary"
+  ).map((r) => r.cneAsn);
+  const onPremisesRouterAsns = Object.values(ON_PREMISES_NETWORKS).map(
+    (n) => n.routerAsn
   );
+  return secondaryAsns.flatMap((asn) =>
+    onPremisesRouterAsns.map((onPremisesRouterAsn) => ({
+      asn,
+      onPremisesRouterAsn,
+    }))
+  );
+};
 
 /** 重複検証の対象になる全 VPC CIDR (Cloud WAN 直アタッチ VPC + TGW 配下 VPC + オンプレミス相当 VPC) */
 export const allVpcCidrs = (): readonly string[] => [

@@ -1,0 +1,61 @@
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "64520-64534"
+    ],
+    "edge-locations": [
+      {
+        "location": "ap-northeast-1",
+        "asn": 64520
+      },
+      {
+        "location": "ap-northeast-3",
+        "asn": 64521
+      },
+      {
+        "location": "us-east-1",
+        "asn": 64522
+      },
+      {
+        "location": "us-west-2",
+        "asn": 64523
+      }
+    ]
+  },
+  "network-function-groups": [],
+  "segments": [
+    {
+      "name": "verification",
+      "edge-locations": [
+        "ap-northeast-1",
+        "ap-northeast-3",
+        "us-east-1",
+        "us-west-2"
+      ],
+      "require-attachment-acceptance": false,
+      "isolate-attachments": false
+    }
+  ],
+  "attachment-policies": [
+    {
+      "description": "attach verification segment by tag",
+      "rule-number": 100,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "cloudwan-seg",
+          "value": "verification"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "verification"
+      }
+    }
+  ]
+}

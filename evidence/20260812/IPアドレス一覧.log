@@ -1,0 +1,43 @@
+> ./scripts/get-endpoints.sh
+==============================
+ EC2 Instances (Private / Public IP)
+==============================
+
+--- ap-northeast-1 (CloudWanRoutingRegionStack-apne1, 4 instances) ---
+NAME                                                         INSTANCE-ID          AZ               PRIVATE-IP    PUBLIC-IP      VPC-ID                 SSM
+(VPN Router)                                                 i-0c84ca70e62aaa3b9  ap-northeast-1a  10.100.0.6    57.182.193.80  vpc-023fa5ba8645ca55c  yes
+CloudWanRoutingRegionStack-apne1/CloudWanDirectVpc/Instance  i-089818414a01cdaad  ap-northeast-1a  10.0.0.150    -              vpc-0928ebc3f8fbeafe1  no
+CloudWanRoutingRegionStack-apne1/OnPremisesVpc/Instance      i-0b42fccb2aa221be2  ap-northeast-1a  10.100.1.118  -              vpc-023fa5ba8645ca55c  no
+CloudWanRoutingRegionStack-apne1/TgwVpc/Instance             i-04d6910a9537d6325  ap-northeast-1a  10.10.0.117   -              vpc-01d3b89b6e2f23964  no
+
+--- ap-northeast-3 (CloudWanRoutingRegionStack-apne3, 2 instances) ---
+NAME                                                         INSTANCE-ID          AZ               PRIVATE-IP   PUBLIC-IP      VPC-ID                 SSM
+CloudWanRoutingRegionStack-apne3/CloudWanDirectVpc/Instance  i-04e61cd466b1fe9e5  ap-northeast-3a  10.1.0.185   56.155.26.142  vpc-04bf0ebb4c8300867  yes
+CloudWanRoutingRegionStack-apne3/TgwVpc/Instance             i-0e042e9d7295de147  ap-northeast-3a  10.11.0.181  13.208.169.89  vpc-02c205fbc7ab3b47f  yes
+
+--- us-east-1 (CloudWanRoutingRegionStack-use1, 4 instances) ---
+NAME                                                        INSTANCE-ID          AZ          PRIVATE-IP    PUBLIC-IP       VPC-ID                 SSM
+(VPN Router)                                                i-07c7aee9e95390b0d  us-east-1a  10.200.0.238  34.192.241.161  vpc-0d78c51d2354e30ac  yes
+CloudWanRoutingRegionStack-use1/CloudWanDirectVpc/Instance  i-03e66277e9841eb86  us-east-1a  10.2.0.142    174.129.86.219  vpc-063b66ad555e664bd  yes
+CloudWanRoutingRegionStack-use1/OnPremisesVpc/Instance      i-0c67a7787ccdf3a83  us-east-1a  10.200.1.189  -               vpc-0d78c51d2354e30ac  no
+CloudWanRoutingRegionStack-use1/TgwVpc/Instance             i-05b70e323313853b4  us-east-1a  10.12.0.175   13.221.36.134   vpc-046a9cc723a12e5f3  yes
+
+--- us-west-2 (CloudWanRoutingRegionStack-usw2, 2 instances) ---
+NAME                                                        INSTANCE-ID          AZ          PRIVATE-IP   PUBLIC-IP       VPC-ID                 SSM
+CloudWanRoutingRegionStack-usw2/CloudWanDirectVpc/Instance  i-036c3a1d009c8aea9  us-west-2a  10.3.0.139   54.202.112.206  vpc-0439063683ba96d16  yes
+CloudWanRoutingRegionStack-usw2/TgwVpc/Instance             i-0cdd623a5f2676805  us-west-2a  10.13.0.102  35.86.106.201   vpc-0c7d5325e5b226e7e  yes
+
+==============================
+ Elastic IP (VPN Router)
+==============================
+
+natGateways: 0 のため NAT Gateway は存在しない。VPN ルーターの eth0 に
+紐づく Elastic IP のみを表示する (CustomerGateway の IP と一致するはず)。
+
+--- ap-northeast-1 (CloudWanRoutingRegionStack-apne1, 1 Elastic IP) ---
+INSTANCE-ID          PUBLIC-IP      PRIVATE-IP  ALLOCATION-ID
+i-0c84ca70e62aaa3b9  57.182.193.80  10.100.0.6  eipalloc-06fb593404efd6ed6
+
+--- us-east-1 (CloudWanRoutingRegionStack-use1, 1 Elastic IP) ---
+INSTANCE-ID          PUBLIC-IP       PRIVATE-IP    ALLOCATION-ID
+i-07c7aee9e95390b0d  34.192.241.161  10.200.0.238  eipalloc-02dc8dee58b18d0ff

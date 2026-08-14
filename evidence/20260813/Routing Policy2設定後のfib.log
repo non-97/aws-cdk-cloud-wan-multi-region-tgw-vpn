@@ -1,0 +1,65 @@
+> scripts/get-fib.sh
+CoreNetwork=core-network-0b33f47bb21243b3f  GlobalNetwork=global-network-0aae11a7f8fe21ca3  (NM_REGION=us-west-2)
+
+===== attachment 凡例 =====
+ATTACHMENT                    REGION          TYPE                         RESOURCE-ARN
+attachment-063b68d18038a3970  ap-northeast-1  VPC                          arn:aws:ec2:ap-northeast-1:<AWSアカウントID>:vpc/vpc-07fc053807baaa8f5
+attachment-05bb95f4e94ef7700  ap-northeast-1  TRANSIT_GATEWAY_ROUTE_TABLE  arn:aws:ec2:ap-northeast-1:<AWSアカウントID>:transit-gateway-route-table/tgw-rtb-073ef3ec8834be2fd
+attachment-025a7eb9f5ee9cf35  ap-northeast-3  TRANSIT_GATEWAY_ROUTE_TABLE  arn:aws:ec2:ap-northeast-3:<AWSアカウントID>:transit-gateway-route-table/tgw-rtb-05199f80e5c8636c0
+attachment-07be2386482845679  ap-northeast-3  VPC                          arn:aws:ec2:ap-northeast-3:<AWSアカウントID>:vpc/vpc-040cf732ba323c70d
+attachment-0d2b2fa70cf403b93  us-east-1       TRANSIT_GATEWAY_ROUTE_TABLE  arn:aws:ec2:us-east-1:<AWSアカウントID>:transit-gateway-route-table/tgw-rtb-0b4b19772dcfc67b9
+attachment-0dcce87f2d64a153d  us-east-1       VPC                          arn:aws:ec2:us-east-1:<AWSアカウントID>:vpc/vpc-05b8c9a180ae923d3
+attachment-0c2ed38e600280571  us-west-2       TRANSIT_GATEWAY_ROUTE_TABLE  arn:aws:ec2:us-west-2:<AWSアカウントID>:transit-gateway-route-table/tgw-rtb-06931ba1afaf54e45
+attachment-08909325c51487f29  us-west-2       VPC                          arn:aws:ec2:us-west-2:<AWSアカウントID>:vpc/vpc-0115d331c8ba78b23
+
+===== SEGMENT=verification  EDGE=ap-northeast-1 =====
+CIDR           TYPE        STATE   NEXT-HOP                                    ATTACHMENT
+10.0.0.0/16    PROPAGATED  ACTIVE  ap-northeast-1/VPC                          attachment-063b68d18038a3970
+10.1.0.0/16    PROPAGATED  ACTIVE  EDGE:ap-northeast-3                         -
+10.2.0.0/16    PROPAGATED  ACTIVE  EDGE:us-east-1                              -
+10.3.0.0/16    PROPAGATED  ACTIVE  EDGE:us-west-2                              -
+10.10.0.0/16   PROPAGATED  ACTIVE  ap-northeast-1/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-05bb95f4e94ef7700
+10.11.0.0/16   PROPAGATED  ACTIVE  EDGE:ap-northeast-3                         -
+10.12.0.0/16   PROPAGATED  ACTIVE  EDGE:us-east-1                              -
+10.13.0.0/16   PROPAGATED  ACTIVE  EDGE:us-west-2                              -
+10.100.0.0/16  PROPAGATED  ACTIVE  ap-northeast-1/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-05bb95f4e94ef7700
+10.200.0.0/16  PROPAGATED  ACTIVE  EDGE:us-east-1                              -
+
+===== SEGMENT=verification  EDGE=ap-northeast-3 =====
+CIDR           TYPE        STATE   NEXT-HOP                                    ATTACHMENT
+10.0.0.0/16    PROPAGATED  ACTIVE  EDGE:ap-northeast-1                         -
+10.1.0.0/16    PROPAGATED  ACTIVE  ap-northeast-3/VPC                          attachment-07be2386482845679
+10.2.0.0/16    PROPAGATED  ACTIVE  EDGE:us-east-1                              -
+10.3.0.0/16    PROPAGATED  ACTIVE  EDGE:us-west-2                              -
+10.10.0.0/16   PROPAGATED  ACTIVE  EDGE:ap-northeast-1                         -
+10.11.0.0/16   PROPAGATED  ACTIVE  ap-northeast-3/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-025a7eb9f5ee9cf35
+10.12.0.0/16   PROPAGATED  ACTIVE  EDGE:us-east-1                              -
+10.13.0.0/16   PROPAGATED  ACTIVE  EDGE:us-west-2                              -
+10.100.0.0/16  PROPAGATED  ACTIVE  ap-northeast-3/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-025a7eb9f5ee9cf35
+10.200.0.0/16  PROPAGATED  ACTIVE  EDGE:us-east-1                              -
+
+===== SEGMENT=verification  EDGE=us-east-1 =====
+CIDR           TYPE        STATE   NEXT-HOP                               ATTACHMENT
+10.0.0.0/16    PROPAGATED  ACTIVE  EDGE:ap-northeast-1                    -
+10.1.0.0/16    PROPAGATED  ACTIVE  EDGE:ap-northeast-3                    -
+10.2.0.0/16    PROPAGATED  ACTIVE  us-east-1/VPC                          attachment-0dcce87f2d64a153d
+10.3.0.0/16    PROPAGATED  ACTIVE  EDGE:us-west-2                         -
+10.10.0.0/16   PROPAGATED  ACTIVE  EDGE:ap-northeast-1                    -
+10.11.0.0/16   PROPAGATED  ACTIVE  EDGE:ap-northeast-3                    -
+10.12.0.0/16   PROPAGATED  ACTIVE  us-east-1/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-0d2b2fa70cf403b93
+10.13.0.0/16   PROPAGATED  ACTIVE  EDGE:us-west-2                         -
+10.100.0.0/16  PROPAGATED  ACTIVE  EDGE:ap-northeast-1                    -
+10.200.0.0/16  PROPAGATED  ACTIVE  us-east-1/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-0d2b2fa70cf403b93
+
+===== SEGMENT=verification  EDGE=us-west-2 =====
+CIDR           TYPE        STATE   NEXT-HOP                               ATTACHMENT
+10.0.0.0/16    PROPAGATED  ACTIVE  EDGE:ap-northeast-1                    -
+10.1.0.0/16    PROPAGATED  ACTIVE  EDGE:ap-northeast-3                    -
+10.2.0.0/16    PROPAGATED  ACTIVE  EDGE:us-east-1                         -
+10.3.0.0/16    PROPAGATED  ACTIVE  us-west-2/VPC                          attachment-08909325c51487f29
+10.10.0.0/16   PROPAGATED  ACTIVE  EDGE:ap-northeast-1                    -
+10.11.0.0/16   PROPAGATED  ACTIVE  EDGE:ap-northeast-3                    -
+10.12.0.0/16   PROPAGATED  ACTIVE  EDGE:us-east-1                         -
+10.13.0.0/16   PROPAGATED  ACTIVE  us-west-2/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-0c2ed38e600280571
+10.100.0.0/16  PROPAGATED  ACTIVE  EDGE:ap-northeast-1                    -
+10.200.0.0/16  PROPAGATED  ACTIVE  us-west-2/TRANSIT_GATEWAY_ROUTE_TABLE  attachment-0c2ed38e600280571

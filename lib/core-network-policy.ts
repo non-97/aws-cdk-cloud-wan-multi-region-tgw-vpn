@@ -142,13 +142,21 @@ const buildSegmentActionsForPrependScope = (
 
 /**
  * prepend 方式の routing-policy (1 件)。
- * secondary リージョンの数だけルールを生成し、rule-number は 100 刻みで採番する
- * (apne3 → rule 100, usw2 → rule 200)。マッチ条件は secondary CNE の ASN
- * (`asn-in-as-path`) であり、オンプレミスルーターの ASN ではない。オンプレミス
- * ルーターの ASN でマッチさせると、primary TGW 直の経路と「primary CNE が
- * secondary CNE から受け取って再広報した経路」がどちらも AS_PATH にオンプレミス
- * ルーターの ASN を含むため区別できない。secondary CNE の ASN でマッチさせれば、
- * AS_PATH に secondary CNE が含まれるかどうかで直接判定できる (注意点 2 を参照)。
+ * secondary CNE の ASN × オンプレミス拠点のルーター ASN の全組み合わせだけ
+ * ルールを生成し、rule-number は 100 刻みで採番する。
+ *
+ * マッチ条件は `asn-in-as-path` を 2 つ `and` で組み合わせる: (1) secondary CNE
+ * の ASN、(2) オンプレミスルーターの ASN。(1) だけだと「secondary CNE を経由した
+ * 経路」だけでなく「secondary CNE 自身が発信した経路 (自身の VPC / TGW 配下 VPC)」
+ * にも一致してしまう (AS_PATH に secondary CNE の ASN が乗るのは経由時も発信元時も
+ * 同じため)。secondary 自身が発信した経路の AS_PATH には secondary 自身の ASN しか
+ * 乗らず、オンプレミスルーターの ASN (発信元 = AS_PATH の起点) は乗らないため、(2) を
+ * `and` で足すことで発信元の経路を確実に除外できる (2026-08 実機評価で確認: 詳細は
+ * `evidence/20260813/` および plan `cosmic-rolling-valiant.md` 参照)。
+ *
+ * オンプレミス側の CIDR を列挙する (`prefix-equals`) 方式は採用しなかった:
+ * オンプレミス拠点にサブネットが増えても列挙を追従できなければ保護対象から漏れる。
+ * 拠点のルーター ASN は拠点ごとに 1 つで増減しないため、この方式は追従漏れが起きない。
  */
 const buildPrependRoutingPolicy = (): Record<string, unknown> => ({
   'routing-policy-name': ROUTING_POLICY_NAME.deprioritizeSecondaryTransit,
@@ -156,12 +164,15 @@ const buildPrependRoutingPolicy = (): Record<string, unknown> => ({
     'Prepend-ASN-on-routes-that-transited-a-secondary-CNE',
   'routing-policy-direction': 'inbound',
   'routing-policy-number': 100,
-  'routing-policy-rules': NetworkConfig.secondaryCneAsns().map(
-    (asn, index) => ({
+  'routing-policy-rules': NetworkConfig.secondaryCneOnPremisesGuardAsns().map(
+    ({ asn, onPremisesRouterAsn }, index) => ({
       'rule-number': (index + 1) * 100,
       'rule-definition': {
-        'match-conditions': [{ type: 'asn-in-as-path', value: asn }],
-        'condition-logic': 'or',
+        'match-conditions': [
+          { type: 'asn-in-as-path', value: asn },
+          { type: 'asn-in-as-path', value: onPremisesRouterAsn },
+        ],
+        'condition-logic': 'and',
         action: {
           type: 'prepend-asn-list',
           value: [...NetworkConfig.ASN.prependAsnList],
@@ -215,17 +226,22 @@ const buildLocalPreferenceRoutingPolicy = (): Record<string, unknown> => ({
         },
       },
     },
-    ...NetworkConfig.secondaryCneAsns().map((asn, index) => ({
-      'rule-number': (index + 2) * 100,
-      'rule-definition': {
-        'match-conditions': [{ type: 'asn-in-as-path', value: asn }],
-        'condition-logic': 'or',
-        action: {
-          type: 'set-local-preference',
-          value: String(NetworkConfig.LOCAL_PREFERENCE.deprioritized),
+    ...NetworkConfig.secondaryCneOnPremisesGuardAsns().map(
+      ({ asn, onPremisesRouterAsn }, index) => ({
+        'rule-number': (index + 2) * 100,
+        'rule-definition': {
+          'match-conditions': [
+            { type: 'asn-in-as-path', value: asn },
+            { type: 'asn-in-as-path', value: onPremisesRouterAsn },
+          ],
+          'condition-logic': 'and',
+          action: {
+            type: 'set-local-preference',
+            value: String(NetworkConfig.LOCAL_PREFERENCE.deprioritized),
+          },
         },
-      },
-    })),
+      }),
+    ),
   ],
 });
 

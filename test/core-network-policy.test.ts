@@ -161,7 +161,7 @@ describe('buildCoreNetworkPolicy (off)', () => {
 
 describe('buildCoreNetworkPolicy (prepend)', () => {
   test.each(PREPEND_SCOPES)(
-    '%s: routing-policies が 1 件、ルールが 2 本 (スコープはルールに影響しない)',
+    '%s: routing-policies が 1 件、ルールが 4 本 (スコープはルールに影響しない)',
     (scope) => {
       const policy = CoreNetworkPolicy.buildCoreNetworkPolicy(
         'prepend',
@@ -170,24 +170,34 @@ describe('buildCoreNetworkPolicy (prepend)', () => {
       expect(policy['routing-policies']).toHaveLength(1);
       expect(
         policy['routing-policies'][0]['routing-policy-rules'],
-      ).toHaveLength(2);
+      ).toHaveLength(4);
     },
   );
 
   test.each(PREPEND_SCOPES)(
-    '%s: asn-in-as-path の値が secondaryCneAsns() と一致し、全ルールが prepend-asn-list を持つ',
+    '%s: match-conditions が secondaryCneOnPremisesGuardAsns() の全組み合わせと AND で一致し、全ルールが prepend-asn-list を持つ',
     (scope) => {
       const policy = CoreNetworkPolicy.buildCoreNetworkPolicy(
         'prepend',
         scope,
       ) as AnyPolicy;
       const rules = policy['routing-policies'][0]['routing-policy-rules'];
-      const matchedAsns = rules.map(
-        (rule: AnyPolicy) =>
-          rule['rule-definition']['match-conditions'][0].value,
+      const matchedPairs = rules.map((rule: AnyPolicy) => {
+        const conditions = rule['rule-definition']['match-conditions'];
+        expect(conditions).toHaveLength(2);
+        conditions.forEach(
+          (c: AnyPolicy) => expect(c.type).toBe('asn-in-as-path'),
+        );
+        return { asn: conditions[0].value, onPremisesRouterAsn: conditions[1].value };
+      });
+      expect(matchedPairs).toEqual(
+        expect.arrayContaining([
+          ...NetworkConfig.secondaryCneOnPremisesGuardAsns(),
+        ]),
       );
-      expect(matchedAsns).toEqual(NetworkConfig.secondaryCneAsns());
+      expect(matchedPairs).toHaveLength(4);
       rules.forEach((rule: AnyPolicy) => {
+        expect(rule['rule-definition']['condition-logic']).toBe('and');
         expect(rule['rule-definition'].action.type).toBe('prepend-asn-list');
         expect(rule['rule-definition'].action.value).toEqual([
           ...NetworkConfig.ASN.prependAsnList,
@@ -249,10 +259,10 @@ describe('buildCoreNetworkPolicy (localPreference)', () => {
     expect(actual).toEqual(allRegionPairs());
   });
 
-  test('ルールが 3 本', () => {
+  test('ルールが 5 本 (boost 1 本 + secondary 減点 4 本)', () => {
     expect(
       policy['routing-policies'][0]['routing-policy-rules'],
-    ).toHaveLength(3);
+    ).toHaveLength(5);
   });
 
   test('set-local-preference アクションが実際に存在する (改行なしテストが空振りでないことの保証)', () => {

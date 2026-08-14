@@ -65,6 +65,150 @@ exports[`CoreNetworkStack snapshot 1`] = `
             "security-group-referencing-support": true,
           },
           "network-function-groups": [],
+          "routing-policies": [
+            {
+              "routing-policy-description": "Prepend-ASN-on-routes-that-transited-a-secondary-CNE",
+              "routing-policy-direction": "inbound",
+              "routing-policy-name": "deprioritizeSecondaryTransit",
+              "routing-policy-number": 100,
+              "routing-policy-rules": [
+                {
+                  "rule-definition": {
+                    "action": {
+                      "type": "prepend-asn-list",
+                      "value": [
+                        4200000001,
+                      ],
+                    },
+                    "condition-logic": "and",
+                    "match-conditions": [
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 64521,
+                      },
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 65000,
+                      },
+                    ],
+                  },
+                  "rule-number": 100,
+                },
+                {
+                  "rule-definition": {
+                    "action": {
+                      "type": "prepend-asn-list",
+                      "value": [
+                        4200000001,
+                      ],
+                    },
+                    "condition-logic": "and",
+                    "match-conditions": [
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 64521,
+                      },
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 65001,
+                      },
+                    ],
+                  },
+                  "rule-number": 200,
+                },
+                {
+                  "rule-definition": {
+                    "action": {
+                      "type": "prepend-asn-list",
+                      "value": [
+                        4200000001,
+                      ],
+                    },
+                    "condition-logic": "and",
+                    "match-conditions": [
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 64523,
+                      },
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 65000,
+                      },
+                    ],
+                  },
+                  "rule-number": 300,
+                },
+                {
+                  "rule-definition": {
+                    "action": {
+                      "type": "prepend-asn-list",
+                      "value": [
+                        4200000001,
+                      ],
+                    },
+                    "condition-logic": "and",
+                    "match-conditions": [
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 64523,
+                      },
+                      {
+                        "type": "asn-in-as-path",
+                        "value": 65001,
+                      },
+                    ],
+                  },
+                  "rule-number": 400,
+                },
+              ],
+            },
+          ],
+          "segment-actions": [
+            {
+              "action": "associate-routing-policy",
+              "edge-location-association": {
+                "edge-location": "ap-northeast-1",
+                "peer-edge-location": "us-west-2",
+                "routing-policy-names": [
+                  "deprioritizeSecondaryTransit",
+                ],
+              },
+              "segment": "verification",
+            },
+            {
+              "action": "associate-routing-policy",
+              "edge-location-association": {
+                "edge-location": "ap-northeast-3",
+                "peer-edge-location": "us-west-2",
+                "routing-policy-names": [
+                  "deprioritizeSecondaryTransit",
+                ],
+              },
+              "segment": "verification",
+            },
+            {
+              "action": "associate-routing-policy",
+              "edge-location-association": {
+                "edge-location": "us-east-1",
+                "peer-edge-location": "ap-northeast-3",
+                "routing-policy-names": [
+                  "deprioritizeSecondaryTransit",
+                ],
+              },
+              "segment": "verification",
+            },
+            {
+              "action": "associate-routing-policy",
+              "edge-location-association": {
+                "edge-location": "us-west-2",
+                "peer-edge-location": "ap-northeast-3",
+                "routing-policy-names": [
+                  "deprioritizeSecondaryTransit",
+                ],
+              },
+              "segment": "verification",
+            },
+          ],
           "segments": [
             {
               "edge-locations": [
@@ -131,11 +275,13 @@ exports[`DashboardStack snapshot 1`] = `
   },
   "Resources": {
     "Dashboard9E4231ED": {
+      "DeletionPolicy": "Retain",
       "Properties": {
-        "DashboardBody": "{"widgets":[{"type":"log","width":24,"height":8,"x":0,"y":0,"properties":{"view":"table","title":"ap-northeast-1 TGW Flow Logs (tcp-flags=0)","region":"ap-northeast-1","query":"SOURCE 'dummy-log-group-apne1' | fields @timestamp, @logStream, @message\\n| filter @message like /^(?:\\\\S+\\\\s+){31}0\\\\s/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}},{"type":"log","width":24,"height":8,"x":0,"y":8,"properties":{"view":"table","title":"ap-northeast-3 TGW Flow Logs (tcp-flags=0)","region":"ap-northeast-3","query":"SOURCE 'dummy-log-group-apne3' | fields @timestamp, @logStream, @message\\n| filter @message like /^(?:\\\\S+\\\\s+){31}0\\\\s/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}},{"type":"log","width":24,"height":8,"x":0,"y":16,"properties":{"view":"table","title":"us-east-1 TGW Flow Logs (tcp-flags=0)","region":"us-east-1","query":"SOURCE 'dummy-log-group-use1' | fields @timestamp, @logStream, @message\\n| filter @message like /^(?:\\\\S+\\\\s+){31}0\\\\s/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}},{"type":"log","width":24,"height":8,"x":0,"y":24,"properties":{"view":"table","title":"us-west-2 TGW Flow Logs (tcp-flags=0)","region":"us-west-2","query":"SOURCE 'dummy-log-group-usw2' | fields @timestamp, @logStream, @message\\n| filter @message like /^(?:\\\\S+\\\\s+){31}0\\\\s/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}}]}",
+        "DashboardBody": "{"widgets":[{"type":"log","width":24,"height":8,"x":0,"y":0,"properties":{"view":"table","title":"ap-northeast-1 TGW Flow Logs (tcp-flags=0)","region":"ap-northeast-1","query":"SOURCE 'dummy-log-group-apne1' | fields @timestamp, @logStream, @message\\n| filter @message like /IPv4 0 0 0 0 0/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}},{"type":"log","width":24,"height":8,"x":0,"y":8,"properties":{"view":"table","title":"ap-northeast-3 TGW Flow Logs (tcp-flags=0)","region":"ap-northeast-3","query":"SOURCE 'dummy-log-group-apne3' | fields @timestamp, @logStream, @message\\n| filter @message like /IPv4 0 0 0 0 0/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}},{"type":"log","width":24,"height":8,"x":0,"y":16,"properties":{"view":"table","title":"us-east-1 TGW Flow Logs (tcp-flags=0)","region":"us-east-1","query":"SOURCE 'dummy-log-group-use1' | fields @timestamp, @logStream, @message\\n| filter @message like /IPv4 0 0 0 0 0/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}},{"type":"log","width":24,"height":8,"x":0,"y":24,"properties":{"view":"table","title":"us-west-2 TGW Flow Logs (tcp-flags=0)","region":"us-west-2","query":"SOURCE 'dummy-log-group-usw2' | fields @timestamp, @logStream, @message\\n| filter @message like /IPv4 0 0 0 0 0/\\n| parse @message /^(?:\\\\S+\\\\s+){16}(?<srcAddr>\\\\S+)\\\\s+(?<dstAddr>\\\\S+)\\\\s+(?:\\\\S+\\\\s+){15}(?<flowDirection>\\\\S+)/\\n| display @timestamp, @logStream, srcAddr, dstAddr, flowDirection, @message\\n| sort @timestamp desc, srcAddr asc\\n| limit 100"}}]}",
         "DashboardName": "CloudWanRouting-TgwFlowLogs",
       },
       "Type": "AWS::CloudWatch::Dashboard",
+      "UpdateReplacePolicy": "Retain",
     },
   },
   "Rules": {
