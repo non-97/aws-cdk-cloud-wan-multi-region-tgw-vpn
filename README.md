@@ -164,7 +164,7 @@ Network Manager の API リージョンは `NM_REGION` で上書きできます 
 
 ### prepend (`minimal` スコープ) 適用時の FIB
 
-`Routing Policy2設定後のfib.log` で確認しました。
+`policy2-fib.log` で確認しました。
 
 | 宛先 | apne1 (jp primary) | apne3 (jp secondary) | use1 (us primary) | usw2 (us secondary) |
 |---|---|---|---|---|
@@ -175,7 +175,7 @@ secondary (apne3 / usw2) は自リージョンのローカル TGW を手放さ�
 
 ### primary の Cloud WAN アタッチメントを削除したときの経路
 
-use1 (us ペアの primary) の TGW の Cloud WAN アタッチメントを削除して測定しました (`Routing Policy2およびLP設定後にバージニア北部TGWのCloud WANアタッチメントを削除した際の*.log`)。
+use1 (us ペアの primary) の TGW の Cloud WAN アタッチメントを削除して測定しました (`policy2-lp-use1-tgw-detach-*.log`)。
 
 apne1 / apne3 の Cloud WAN FIB上の us 宛 (10.200.0.0/16) の NEXT-HOP は、削除前後で `EDGE:us-east-1` のまま変化しませんでした。切り替わったのは use1 自身のエッジ内部の NEXT-HOP だけで、削除前は自リージョンの TGW、削除後は `EDGE:us-west-2` に変わりました。RIB でも use1 の CNE ASN (64522) を含む AS_PATH `64522 64523 64515 65001` が apne3 側から引き続き観測できています。
 
@@ -185,13 +185,13 @@ apne1 / apne3 の Cloud WAN FIB上の us 宛 (10.200.0.0/16) の NEXT-HOP は、
 
 ### アタッチメントを復旧したときの経路
 
-削除したアタッチメントを再作成して測定しました (`Routing Policy2およびLP設定後にバージニア北部TGWのCloud WANアタッチメントを削除して再作成した際の*.log`)。CIDR と NEXT-HOP の種別 `us-east-1/TRANSIT_GATEWAY_ROUTE_TABLE` は削除前と完全に一致しましたが、アタッチメント ID は新規に発番されました。アタッチメントを削除して作り直しているため、ID が変わること自体は想定どおりです。
+削除したアタッチメントを再作成して測定しました (`policy2-lp-use1-tgw-detach-restore-*.log`)。CIDR と NEXT-HOP の種別 `us-east-1/TRANSIT_GATEWAY_ROUTE_TABLE` は削除前と完全に一致しましたが、アタッチメント ID は新規に発番されました。アタッチメントを削除して作り直しているため、ID が変わること自体は想定どおりです。
 
 VPN ルーター側の BGP セッションの Up 時間は削除前から単調に増加しており、アタッチメントの削除と再作成の間、IPsec トンネルと BGP セッション自体は切断されていませんでした。
 
 ### AS_PATH が等長になる箇所の選択結果
 
-Routing Policy 未適用時の RIB (`Routing Policy未設定時のrib.log`) で、us 宛のローカル経路を持たない apne1 から見た候補に、use1 経由の AS_PATH `64522 64514 65001` (長さ 3) と usw2 経由の AS_PATH `64523 64515 65001` (長さ 3) の同着があることを確認しました。この回の測定では usw2 が選ばれましたが (`Routing Policy未設定時のfib.log`)、同一条件での再測定はしておらず、選択が毎回同じになるかは未確認です。
+Routing Policy 未適用時の RIB (`baseline-rib.log`) で、us 宛のローカル経路を持たない apne1 から見た候補に、use1 経由の AS_PATH `64522 64514 65001` (長さ 3) と usw2 経由の AS_PATH `64523 64515 65001` (長さ 3) の同着があることを確認しました。この回の測定では usw2 が選ばれましたが (`baseline-fib.log`)、同一条件での再測定はしておらず、選択が毎回同じになるかは未確認です。
 
 ### `localPreference` モードのデプロイ状況
 

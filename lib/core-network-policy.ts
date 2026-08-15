@@ -202,7 +202,7 @@ const buildPrependRoutingPolicy = (): Record<string, unknown> => ({
  * (AS_PATH 長 2 / LP 0) より、apne1 経由の経路 (AS_PATH 長 3 / boost で LP 300)
  * のほうが優先されかねない。これは「secondary リージョンはローカル TGW を使う」
  * という要件を壊す。この危険性は実測でも裏付けられている。
- * `evidence/20260813/Routing Policy2設定後のrib.log` の EDGE=ap-northeast-3 と
+ * `evidence/20260813/policy2-rib.log` の EDGE=ap-northeast-3 と
  * EDGE=us-west-2 に、絞り込みが無ければ boost の対象になってしまう経路が実在する
  * ことを確認した。
  *

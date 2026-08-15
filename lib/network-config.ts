@@ -275,7 +275,7 @@ export const secondaryCneOnPremisesGuardAsns = (): readonly {
  * 別グループの拠点と組ませる交差項を作ると、他リージョン経由で実際に届いている
  * 経路 (ローカル TGW 経由よりも AS_PATH が長い) まで boost の対象になってしまい、
  * 実害が出ることを実測で確認済みである。詳細は
- * `evidence/20260813/Routing Policy2設定後のrib.log` の EDGE=us-west-2 と
+ * `evidence/20260813/policy2-rib.log` の EDGE=us-west-2 と
  * EDGE=ap-northeast-3 を参照。
  */
 export const primaryCneOnPremisesBoostAsns = (): readonly {
@@ -338,8 +338,7 @@ export type PrependScope = "minimal" | "withPrimaryFallback" | "all";
  * 状態で primary (us-east-1) の TGW の Cloud WAN アタッチメントを削除する detach
  * 検証を行ったところ、判定表が想定する症状そのもの、すなわちローカル経路を失った
  * primary を経由する迂回が観測された。
- * `evidence/20260813/Routing Policy2およびLP設定後にバージニア
- * 北部TGWのCloud WANアタッチメントを削除した際のfib.log` では、apne1 と apne3 の
+ * `evidence/20260813/policy2-lp-use1-tgw-detach-fib.log` では、apne1 と apne3 の
  * FIB で 10.200.0.0/16 の next-hop が EDGE:us-east-1 のままになっている。
  * 削除したのは us-east-1 の TGW アタッチメントであって CNE 自体ではないため、
  * us-east-1 は 10.200.0.0/16 へのローカル経路を失った状態でメッシュに残り、
