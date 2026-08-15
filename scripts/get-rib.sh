@@ -2,10 +2,12 @@
 #
 # Cloud WAN コアネットワークの「ルーティング情報ベース (RIB)」をセグメント × リージョンごとに取得する。
 #
-# 重要: RIB は routing policy 適用「前」の情報を返す。ポリシーの効果確認は必ず get-fib.sh
-# (FIB = get-network-routes、適用後の確定ルート) で行うこと。RIB は BGP 属性
-# (Local Preference / AS Path / MED / Community) 付きの候補ルートを見せるため、
-# AS_PATH の等長性判定や CNE 間トランジットの有無の判定に使う。
+# 重要: RIB は、クエリ対象のエッジ自身がこれから適用する分については routing policy 適用
+# 「前」の情報を返す。ただし他エッジが中継前に既に適用した改変 (prepend / set-local-preference)
+# は RIB にも反映される。この区別自体は AWS ドキュメントに明記が無く、実データから逆算した
+# 推論である。ポリシーの効果確認は必ず get-fib.sh (FIB = get-network-routes、適用後の確定
+# ルート) で行うこと。RIB は BGP 属性 (Local Preference / AS Path / MED / Community) 付きの
+# 候補ルートを見せるため、AS_PATH の等長性判定や CNE 間トランジットの有無の判定に使う。
 #
 # 本検証環境のセグメントは "verification" の 1 つのみ。NFG は無いため NFG 関連の処理は無い。
 #

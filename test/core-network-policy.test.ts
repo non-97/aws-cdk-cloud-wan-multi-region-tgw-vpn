@@ -238,31 +238,51 @@ describe('buildCoreNetworkPolicy (prepend)', () => {
   });
 });
 
+/**
+ * boost 方式で local preference を引き上げる 4 ペアの期待値。
+ * (課題の表を直書き。実装の述語をそのまま転記すると述語のバグを検出できないため)
+ */
+const LOCAL_PREFERENCE_BOOST_PAIRS = new Set([
+  'us-east-1->ap-northeast-1',
+  'us-west-2->ap-northeast-1',
+  'ap-northeast-1->us-east-1',
+  'ap-northeast-3->us-east-1',
+]);
+
 describe('buildCoreNetworkPolicy (localPreference)', () => {
   const policy = CoreNetworkPolicy.buildCoreNetworkPolicy(
     'localPreference',
   ) as AnyPolicy;
 
-  test('segment-actions が 12 件、routing-policies が 1 件', () => {
-    expect(policy['segment-actions']).toHaveLength(12);
+  test('segment-actions が 4 件、routing-policies が 1 件', () => {
+    expect(policy['segment-actions']).toHaveLength(4);
     expect(policy['routing-policies']).toHaveLength(1);
   });
 
-  test('segment-actions は全 (edge-location, peer-edge-location) ペアを過不足なく覆う', () => {
-    const actions = policy['segment-actions'];
-    const actual = new Set(
-      actions.map(
-        (a: AnyPolicy) =>
-          `${a['edge-location-association']['edge-location']}->${a['edge-location-association']['peer-edge-location']}`,
-      ),
-    );
-    expect(actual).toEqual(allRegionPairs());
+  test('segment-actions は boost 対象の 4 ペアと完全一致する', () => {
+    expect(actionPairSet(policy)).toEqual(LOCAL_PREFERENCE_BOOST_PAIRS);
   });
 
-  test('ルールが 5 本 (boost 1 本 + secondary 減点 4 本)', () => {
+  test('ルールが 2 本 (primary 2 拠点分)', () => {
     expect(
       policy['routing-policies'][0]['routing-policy-rules'],
-    ).toHaveLength(5);
+    ).toHaveLength(2);
+  });
+
+  test('各ルールの match-conditions が asn-in-as-path 2 つの and、アクションが set-local-preference で値が 300', () => {
+    const rules = policy['routing-policies'][0]['routing-policy-rules'];
+    rules.forEach((rule: AnyPolicy) => {
+      const conditions = rule['rule-definition']['match-conditions'];
+      expect(conditions).toHaveLength(2);
+      conditions.forEach((c: AnyPolicy) =>
+        expect(c.type).toBe('asn-in-as-path'),
+      );
+      expect(rule['rule-definition']['condition-logic']).toBe('and');
+      expect(rule['rule-definition'].action.type).toBe(
+        'set-local-preference',
+      );
+      expect(rule['rule-definition'].action.value).toBe('300');
+    });
   });
 
   test('set-local-preference アクションが実際に存在する (改行なしテストが空振りでないことの保証)', () => {
@@ -272,14 +292,14 @@ describe('buildCoreNetworkPolicy (localPreference)', () => {
   });
 
   test.each(PREPEND_SCOPES)(
-    '%s: prependScope に何を指定しても segment-actions は 12 件のまま (localPreference は全ペア固定)',
+    '%s: prependScope に何を指定しても segment-actions は 4 件のまま (boost 対象は固定)',
     (scope) => {
       const scoped = CoreNetworkPolicy.buildCoreNetworkPolicy(
         'localPreference',
         scope,
       ) as AnyPolicy;
-      expect(scoped['segment-actions']).toHaveLength(12);
-      expect(actionPairSet(scoped)).toEqual(allRegionPairs());
+      expect(scoped['segment-actions']).toHaveLength(4);
+      expect(actionPairSet(scoped)).toEqual(LOCAL_PREFERENCE_BOOST_PAIRS);
     },
   );
 });

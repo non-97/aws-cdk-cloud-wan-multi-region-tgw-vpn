@@ -88,8 +88,10 @@ export interface OnPremisesVpcProps {
  * その CIDR は「VPC アタッチメント由来の経路」(AS_PATH 長 1 相当) として
  * 全 Core Network Edge へ広報されてしまう。一方、この構成で本来検証したい
  * 経路は TGW peering attachment 経由 (AS_PATH 長 3 相当) であり、
- * Cloud WAN の経路選択は AS_PATH 長の短い方を優先するため、
- * VPC アタッチメント由来の経路が常に勝ってしまう。
+ * Cloud WAN の経路選択は動的ルートの評価順序で AS_PATH 長の短い方を最初の基準
+ * として優先するため、VPC アタッチメント由来の経路が常に勝ってしまう。
+ * この評価順序は AWS の Route evaluation ページで確認できる
+ * (https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-evaluation.html)。
  * その結果、東京 TGW 経由か大阪 TGW 経由かを BGP / Routing Policy で
  * 制御して比較するという検証そのものが成立しなくなる。
  */

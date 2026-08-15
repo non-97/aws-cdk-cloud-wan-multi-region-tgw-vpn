@@ -121,9 +121,9 @@ export const PREPEND_SCOPE: PrependScope = 'minimal';          // 'minimal' | 'w
 |---|---|---|
 | `off` | Routing Policy を適用しない | ベースライン <br> 不定性と AS_PATH 等長の実測 |
 | `prepend` | prepend <br> `PREPEND_SCOPE` でエントリ数を切り替える | CNE 間トランジットの判定 <br> AS_PATH 方式の効果測定 |
-| `localPreference` | `set-local-preference` 方式 | local preference の観測 |
+| `localPreference` | `set-local-preference` 方式 (primary CNE 経由の経路を boost) | primary 優先の効果測定 <br> local preference と AS_PATH 長の優先関係の検証 |
 
-`PREPEND_SCOPE` は `prepend` モードにのみ効きます。`localPreference` は常に全 12 ペアに適用されます。
+`PREPEND_SCOPE` は `prepend` モードにのみ効きます。`localPreference` は常に primary CNE 経由の 4 ペアに絞って適用されます。絞り込む理由は、全 12 ペアに適用すると secondary リージョンが自リージョンの TGW を手放しかねないためです。
 
 | スコープ | エントリ数 | 採用するペア |
 |---|---|---|
@@ -142,9 +142,9 @@ node_modules/.bin/cdk deploy CloudWanRoutingCoreStack
 | コマンド | 内容 |
 |---|---|
 | `./scripts/get-fib.sh` | Cloud WAN の FIB (確定ルート) を 4 エッジロケーション分取得する <br> **Routing Policy の効果確認はこちらで行う** |
-| `./scripts/get-rib.sh` | Cloud WAN の RIB (BGP 属性付きの候補ルート) <br> **ポリシー適用前の情報しか返さない** |
+| `./scripts/get-rib.sh` | Cloud WAN の RIB (BGP 属性付きの候補ルート) <br> **クエリ対象のエッジ自身がこれから適用する分は適用前の情報だが、他エッジが中継前に適用済みの改変は反映される** |
 
-RIB を見て「ポリシーが効いていない」と誤判断しないでください。`list-core-network-routing-information` は routing policy 適用前の状態を返します。
+RIB を見て「ポリシーが効いていない」と誤判断しないでください。`list-core-network-routing-information` は、クエリ対象のエッジ自身がこれから適用する分については routing policy 適用前の状態を返しますが、他エッジが中継前に既に適用した改変は RIB にも反映されます。この区別自体は AWS ドキュメントに明記が無く、実データから逆算した推論です。
 
 Network Manager の API リージョンは `NM_REGION` で上書きできます (既定は us-west-2)。
 
@@ -276,7 +276,7 @@ node_modules/.bin/jest
 - `set-local-preference` の値に改行が含まれないこと
 - `attachment-routing-policy-rules` と `routing-policy-label` が出力に含まれないこと
 - `PREPEND_SCOPE` ごとの `segment-actions` が `minimal` 4 件 / `withPrimaryFallback` 6 件 / `all` 12 件と一致すること
-- `localPreference` はどの `PREPEND_SCOPE` を指定しても `segment-actions` が全 12 ペア固定であること
+- `localPreference` はどの `PREPEND_SCOPE` を指定しても `segment-actions` が primary CNE 経由の 4 ペア固定であること
 
 ## 設計上の重要な制約
 

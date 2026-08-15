@@ -192,12 +192,11 @@ export const ASN = {
 
 /**
  * Routing Policy の local preference で使う値。
- * `preferred` を既定より優先させたい経路に、`deprioritized` を不利にしたい経路に使う。
- * どちらの経路に当てるかはモードごとに `core-network-policy.ts` 側で決める
+ * `preferred` は優先させたい経路にだけ設定する。既定値 0 を下回る値は使わない
+ * (理由は core-network-policy.ts の buildLocalPreferenceRoutingPolicy の JSDoc を参照)
  */
 export const LOCAL_PREFERENCE = {
   preferred: 300,
-  deprioritized: 50,
 } as const;
 
 /** Cloud WAN の固定値 */
@@ -269,6 +268,25 @@ export const secondaryCneOnPremisesGuardAsns = (): readonly {
   );
 };
 
+/**
+ * primary CNE の ASN と、その primary が属するオンプレミス拠点のルーター ASN の
+ * 組み合わせ。`secondaryCneOnPremisesGuardAsns` (secondary × 全拠点の直積) とは
+ * 異なり、直積にしない。各 primary は自分のグループの拠点とだけ組にする。
+ * 別グループの拠点と組ませる交差項を作ると、他リージョン経由で実際に届いている
+ * 経路 (ローカル TGW 経由よりも AS_PATH が長い) まで boost の対象になってしまい、
+ * 実害が出ることを実測で確認済みである。詳細は
+ * `evidence/20260813/Routing Policy2設定後のrib.log` の EDGE=us-west-2 と
+ * EDGE=ap-northeast-3 を参照。
+ */
+export const primaryCneOnPremisesBoostAsns = (): readonly {
+  readonly asn: number;
+  readonly onPremisesRouterAsn: number;
+}[] =>
+  REGION_CONFIGS.filter((r) => r.onPremisesRole === "primary").map((r) => ({
+    asn: r.cneAsn,
+    onPremisesRouterAsn: ON_PREMISES_NETWORKS[r.onPremisesNetwork].routerAsn,
+  }));
+
 /** 重複検証の対象になる全 VPC CIDR (Cloud WAN 直アタッチ VPC + TGW 配下 VPC + オンプレミス相当 VPC) */
 export const allVpcCidrs = (): readonly string[] => [
   ...REGION_CONFIGS.map((r) => r.cloudWanVpc.vpcCidr),
@@ -303,14 +321,33 @@ export type PrependScope = "minimal" | "withPrimaryFallback" | "all";
  * (`ROUTING_POLICY_MODE` と同じ理由でこの定数を正とする方式にする)。
  *
  * `prepend` の segment-actions は本来 (受信 CNE = X, 送信 CNE = Y、X !== Y) の
- * 全 12 ペアに一律適用するが、必要なエントリ数は 2026-08 時点で未確定の 2 つの
- * 事項によって変わる (詳細はスキル aws-verification-gotchas / references/cloud-wan.md
- * の「CNE 間のトランジットの有無は未確定」を参照)。
+ * 全 12 ペアに一律適用する。必要なエントリ数は次の 2 つの事項によって変わり、
+ * 2026-08 の実機評価でいずれも確認済みである。
  *
- * - **CNE 間トランジット**: ある CNE が他の CNE から学習した経路を、さらに別の
- *   CNE へ再広報するか
- * - **改変の引き継ぎ**: inbound ポリシーで改変した AS_PATH が、その CNE の
- *   再広報時に引き継がれるか
+ * - **CNE 間トランジット**: 発生する。ある CNE が他の CNE から学習した経路を、
+ *   さらに別の CNE へ再広報していることを `evidence/20260813/` の rib.log で
+ *   確認した
+ * - **改変の引き継ぎ**: 引き継がれる。他エッジが適用した prepend 済み ASN
+ *   `4200000001` が中継先の AS_PATH に乗ったまま観測されたことを同 rib.log で
+ *   確認した
+ *
+ * この 2 事項が確認された結果、後述の判定表を機械的に適用すると
+ * `withPrimaryFallback` が必要という結論になる。一方で、通常運用時の実測では、
+ * 現在の構成である `minimal` で意図通り secondary の経路が deprioritize
+ * されている。加えて、Routing Policy 2 (prepend) と旧 LP 設定を両方適用した
+ * 状態で primary (us-east-1) の TGW の Cloud WAN アタッチメントを削除する detach
+ * 検証を行ったところ、判定表が想定する症状そのもの、すなわちローカル経路を失った
+ * primary を経由する迂回が観測された。
+ * `evidence/20260813/Routing Policy2およびLP設定後にバージニア
+ * 北部TGWのCloud WANアタッチメントを削除した際のfib.log` では、apne1 と apne3 の
+ * FIB で 10.200.0.0/16 の next-hop が EDGE:us-east-1 のままになっている。
+ * 削除したのは us-east-1 の TGW アタッチメントであって CNE 自体ではないため、
+ * us-east-1 は 10.200.0.0/16 へのローカル経路を失った状態でメッシュに残り、
+ * usw2 から学習した経路を中継し続けている。この観測は LP 設定も同時に適用した
+ * 状態のものであり、prepend の
+ * `minimal` 単独の挙動を切り分けたものではない。この食い違いを踏まえて
+ * `PREPEND_SCOPE` の値を引き上げるべきかは、この訂正とは別に判断する。値そのもの
+ * はこの訂正では変更しない。
  *
  * この 2 つを実測で切り分けるため、エントリ数を段階的に増やせるようにする。
  * 3 段階の定義 (いずれも X !== Y):
@@ -332,14 +369,24 @@ export type PrependScope = "minimal" | "withPrimaryFallback" | "all";
  *   CNE ごとに個別に判定するしかない。
  *
  * 実験手順: `minimal` から始めて primary の VPN 接続を落とし、ローカル経路を
- * 持たない CNE の FIB (`get-network-routes`。RIB ではなく FIB で見る。RIB は
- * ポリシー適用前の情報のため) を確認する。secondary 直の経路に決まればトランジット
- * 無しで確定。primary 経由と同点 (タイブレークで不定) なら `withPrimaryFallback`
- * に上げて再測定する。それでも解決しなければ `all` に上げる。
+ * 持たない CNE の FIB (`get-network-routes`) を確認する。効果確認は必ず FIB で
+ * 行う。RIB は、クエリ対象のエッジ自身がこれから適用する分については適用前の
+ * 情報を返すが、他エッジが中継前に既に適用した改変は RIB にも反映される。
+ * この区別自体は AWS ドキュメントに明記が無く、実データから逆算した推論である。
+ * secondary 直の経路に決まればトランジット無しで確定。primary 経由と同点なら
+ * `withPrimaryFallback` に上げて再測定する。AS_PATH 長と MED が等しい場合は
+ * タイブレークで不定になる。AWS の Route evaluation ページに
+ * 「a single attachment will be chosen in a deterministically random manner」
+ * とある
+ * (https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-evaluation.html)。
+ * それでも解決しなければ `all` に上げる。
  */
 export const PREPEND_SCOPE: PrependScope = "minimal";
 
-/** (受信 CNE, 送信 CNE) のペア。segment-actions の edge-location / peer-edge-location に対応する */
+/**
+ * (受信 CNE, 送信 CNE) のペア。segment-actions の edge-location / peer-edge-location
+ * に対応する。`prependScopePairs` と `localPreferenceBoostPairs` の両方が返す共通の形
+ */
 export interface PrependPair {
   /** 受信 CNE (edge-location)。X */
   readonly edge: RegionConfig;
@@ -374,6 +421,25 @@ export const prependScopePairs = (
       (peer): PrependPair => ({ edge, peer })
     )
   ).filter((pair) => PREPEND_SCOPE_PREDICATES[scope](pair));
+
+/**
+ * boost 方式で local preference を優先させる (edge, peer) ペアの一覧。
+ * 述語は「peer が primary CNE であり、かつ edge が peer と別のオンプレミス
+ * グループに属する」。`prependScopePairs` と構造は同じだが、boost 方式に
+ * 正しい絞り込みはこの 1 つしかないため `PrependScope` のような enum は作らない。
+ * 絞り込みが必要な理由は `buildSegmentActionsForLocalPreferenceBoost` の
+ * JSDoc を参照
+ */
+export const localPreferenceBoostPairs = (): readonly PrependPair[] =>
+  REGION_CONFIGS.flatMap((edge) =>
+    REGION_CONFIGS.filter((peer) => peer.region !== edge.region).map(
+      (peer): PrependPair => ({ edge, peer })
+    )
+  ).filter(
+    ({ edge, peer }) =>
+      peer.onPremisesRole === "primary" &&
+      edge.onPremisesNetwork !== peer.onPremisesNetwork
+  );
 
 /** CIDR 文字列を [開始アドレス, 終了アドレス] の 32bit 整数範囲に変換する */
 export const cidrToRange = (cidr: string): readonly [number, number] => {

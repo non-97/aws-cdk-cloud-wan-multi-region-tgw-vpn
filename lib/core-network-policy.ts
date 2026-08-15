@@ -14,9 +14,11 @@
  *    素の数字文字列 (例: "300") をそのまま渡す。
  * 2. マッチ条件にオンプレミスの CIDR を列挙せず `asn-in-as-path` を使う。
  *    本番のオンプレミス側 CIDR は多数あり列挙が非現実的なため、AS_PATH に必ず含まれる
- *    ASN 1 つで全件を捉える。`prepend` / `localPreference` のいずれも secondary
- *    リージョンの CNE ASN で「secondary CNE を経由したか」を判定する
- *    (`buildSegmentActionsForAllPairs` のコメントを参照)。
+ *    CNE の ASN とオンプレミスルーターの ASN の組み合わせ (2 条件の and) で対象経路を
+ *    特定する。`prepend` は secondary CNE の ASN で「secondary CNE を経由したか」を
+ *    判定し、`localPreference` は primary CNE の ASN で「primary CNE を経由したか」を
+ *    判定する。それぞれの詳細は buildPrependRoutingPolicy と
+ *    buildLocalPreferenceRoutingPolicy のコメントを参照。
  * 3. `attachment-routing-policy-rules` 方式は使わない。`routing-policy-label` の
  *    付与はアタッチメントの Replacement を伴い、過去に 6 アタッチメント一括削除で
  *    change event queue が飽和して約 3 時間のデッドロックになった実績があるため。
@@ -29,7 +31,7 @@ import * as NetworkConfig from './network-config';
 /** routing-policy-name はハイフン不可 / 英字始まり / 英数字のみのため camelCase にする */
 const ROUTING_POLICY_NAME = {
   deprioritizeSecondaryTransit: 'deprioritizeSecondaryTransit',
-  observeLocalPreference: 'observeLocalPreference',
+  preferPrimaryViaLocalPreference: 'preferPrimaryViaLocalPreference',
 } as const;
 
 /** モード共通のポリシー骨格 (segment-actions と routing-policies を除く) */
@@ -74,63 +76,12 @@ const buildCommonPolicy = (): Record<string, unknown> => ({
   ],
 });
 
-/**
- * 全 (edge-location, peer-edge-location) ペアに同じ routing-policy を一律で紐付ける
- * segment-actions を生成する。4 リージョンなので `4 × 3 = 12` エントリになる。
- *
- * **リージョンごとに適用先を出し分けない。** これが本番設計の核心である。
- * secondary の CNE (apne3 / usw2) に当てても、そのリージョン宛の経路には自分自身の
- * ASN が AS_PATH に乗らないためマッチせず、ローカル TGW が選ばれ続ける。つまり
- * 「全ペアへ一律適用 + マッチ条件は secondary CNE の ASN」という組み合わせだけで、
- * secondary リージョン自身は自リージョンの TGW を使い、他リージョンからの越境経路
- * だけ不利になるという要件がリージョンごとの出し分け無しに実現できる。
- *
- * また、この一律適用の設計は「ある CNE が別の CNE から受け取った経路を、改変後の
- * AS_PATH のまま再広報するか」という 2026-08 時点で AWS 公式記述が無く未確定の
- * 前提 (スキル aws-verification-gotchas 参照) にも依存しない。マッチ条件を
- * secondary CNE の ASN にしている限り、どの edge-location からの評価であっても
- * 「secondary CNE を経由した経路かどうか」を判定基準ひとつで区別できるため、
- * 再広報の実際の挙動がどちらであっても結果が変わらない。
- *
- * **この関数自体は `localPreference` 専用として残す。** 上記の「未確定の前提に
- * 依存しない」という性質は全 12 ペアに一律適用した場合の話であり、`prepend`
- * モードは `NetworkConfig.PREPEND_SCOPE` で意図的にペアを絞ることで、まさに
- * その未確定の前提 (CNE 間トランジットの有無 / 改変の引き継ぎ) を実測で
- * 切り分ける。`prepend` 用のペア絞り込みは `buildSegmentActionsForPrependScope`
- * (本関数の下) を参照。
- */
-const buildSegmentActionsForAllPairs = (
+/** (edge, peer) ペア配列から segment-actions を組み立てる共通ロジック */
+const buildSegmentActionsForPairs = (
   routingPolicyName: string,
+  pairs: readonly NetworkConfig.PrependPair[],
 ): Record<string, unknown>[] =>
-  NetworkConfig.REGION_CONFIGS.flatMap((edge) =>
-    NetworkConfig.REGION_CONFIGS.filter(
-      (peer) => peer.region !== edge.region,
-    ).map((peer) => ({
-      action: 'associate-routing-policy',
-      segment: NetworkConfig.CLOUD_WAN.segmentName,
-      'edge-location-association': {
-        'routing-policy-names': [routingPolicyName],
-        'edge-location': edge.region,
-        'peer-edge-location': peer.region,
-      },
-    })),
-  );
-
-/**
- * prepend 方式の routing-policy を紐付ける segment-actions を、`PrependScope` で
- * 絞り込んだ (受信 CNE, 送信 CNE) ペアだけ生成する。
- *
- * `localPreference` (`buildSegmentActionsForAllPairs`) とは異なり、`prepend` は
- * 当たっていないペアの経路が既定の AS_PATH 長のまま評価されるだけ (prepend 0 回 =
- * 何もしないのと同じ) で済むため、全ペアに当てなくても意味は反転しない。ペアを
- * 絞ることで、CNE 間トランジットの有無と改変の引き継ぎという 2 つの未確定事項を
- * 実測で切り分けられる (詳細は `NetworkConfig.PREPEND_SCOPE` の JSDoc を参照)。
- */
-const buildSegmentActionsForPrependScope = (
-  routingPolicyName: string,
-  scope: NetworkConfig.PrependScope,
-): Record<string, unknown>[] =>
-  NetworkConfig.prependScopePairs(scope).map(({ edge, peer }) => ({
+  pairs.map(({ edge, peer }) => ({
     action: 'associate-routing-policy',
     segment: NetworkConfig.CLOUD_WAN.segmentName,
     'edge-location-association': {
@@ -139,6 +90,46 @@ const buildSegmentActionsForPrependScope = (
       'peer-edge-location': peer.region,
     },
   }));
+
+/**
+ * prepend 方式の routing-policy を紐付ける segment-actions を、`PrependScope` で
+ * 絞り込んだ (受信 CNE, 送信 CNE) ペアだけ生成する。
+ *
+ * `prepend` は当たっていないペアの経路が既定の AS_PATH 長のまま評価されるだけ
+ * (prepend 0 回 = 何もしないのと同じ) で済むため、全ペアに当てなくても意味は
+ * 反転しない。`localPreference` (boost 方式) も、当たっていないペアの経路は
+ * 既定の local preference 0 のまま残るだけなので同じ性質を持つ。両者の絞り込みの
+ * 目的は異なる。`prepend` はこの性質を利用して、CNE 間トランジットの有無と改変の
+ * 引き継ぎという 2 つの事項を実測で切り分けるためにペアを段階的に増やす
+ * (詳細は `NetworkConfig.PREPEND_SCOPE` の JSDoc を参照)。`localPreference` は
+ * 逆に、絞り込まないと primary 以外の経路まで優先させてしまい secondary が
+ * 自リージョンの TGW を使うという要件を壊す実害が出るため絞り込む
+ * (詳細は `buildSegmentActionsForLocalPreferenceBoost` のコメントを参照)。
+ */
+const buildSegmentActionsForPrependScope = (
+  routingPolicyName: string,
+  scope: NetworkConfig.PrependScope,
+): Record<string, unknown>[] =>
+  buildSegmentActionsForPairs(
+    routingPolicyName,
+    NetworkConfig.prependScopePairs(scope),
+  );
+
+/**
+ * local preference boost 方式の routing-policy を紐付ける segment-actions を、
+ * `NetworkConfig.localPreferenceBoostPairs()` が返す 4 ペアだけ生成する。
+ *
+ * 絞り込みが必要な理由は `buildLocalPreferenceRoutingPolicy` の JSDoc を参照。
+ * 要約すると、絞り込まずに全 12 ペアへ適用すると secondary 自身が対象に含まれ、
+ * secondary が自リージョンの TGW を手放しかねない実害が実測で確認されている。
+ */
+const buildSegmentActionsForLocalPreferenceBoost = (
+  routingPolicyName: string,
+): Record<string, unknown>[] =>
+  buildSegmentActionsForPairs(
+    routingPolicyName,
+    NetworkConfig.localPreferenceBoostPairs(),
+  );
 
 /**
  * prepend 方式の routing-policy (1 件)。
@@ -152,7 +143,7 @@ const buildSegmentActionsForPrependScope = (
  * 同じため)。secondary 自身が発信した経路の AS_PATH には secondary 自身の ASN しか
  * 乗らず、オンプレミスルーターの ASN (発信元 = AS_PATH の起点) は乗らないため、(2) を
  * `and` で足すことで発信元の経路を確実に除外できる (2026-08 実機評価で確認: 詳細は
- * `evidence/20260813/` および plan `cosmic-rolling-valiant.md` 参照)。
+ * `evidence/20260813/` を参照)。
  *
  * オンプレミス側の CIDR を列挙する (`prefix-equals`) 方式は採用しなかった:
  * オンプレミス拠点にサブネットが増えても列挙を追従できなければ保護対象から漏れる。
@@ -183,66 +174,63 @@ const buildPrependRoutingPolicy = (): Record<string, unknown> => ({
 });
 
 /**
- * local preference 方式の routing-policy (1 件)。
+ * local preference 方式の routing-policy (1 件)。primary CNE 経由の経路の
+ * local preference だけを boost 方式で引き上げ、下げる操作は行わない。
  *
- * **位置づけ**: 本番設計案ではなく、local preference が Route evaluation の
- * どこで効くかを測る観測用モードである。理由は以下の通り。
+ * **位置づけ**: 本番設計案として成立する。旧方式は rule 100 で全件を 300 に
+ * 引き上げてから secondary 一致分だけ 50 に下げ直す方式だった。この旧方式が
+ * 抱えていた「既定値 0 を下回れない」という制約は、優先したい経路だけを
+ * 引き上げる本方式には存在しない。既定値が 0 であることは AWS 公式ブログ Part 1
+ * の "The default local preference is 0" で確認済みである
+ * (出典: https://aws.amazon.com/blogs/networking-and-content-delivery/aws-cloud-wan-routing-policy-fine-grained-controls-for-your-global-network-part-1/)。
+ * docs.aws.amazon.com 配下の正式リファレンスには同等の記載が無く、このブログのみが
+ * 出典である。
  *
- * 1. rule 100 は `prefix-equals: "0.0.0.0/0"` と `prefix-in-cidr: "0.0.0.0/0"` の
- *    2 条件を `or` で結び、実質的に全件にマッチさせる。これは「既定値を一旦
- *    引き上げてから、条件に合うものを後続ルールで下げる」という書き方を成立させる
- *    ための土台であり、同時に `match-conditions: []` という空配列が invalid で
- *    受理されないことの回避でもある (fallback として `prefix-in-cidr: "0.0.0.0/0"`
- *    を書く手法はスキル aws-verification-gotchas に記載の検証済み手法)。
- * 2. **このモードは「secondary リージョンはローカル TGW を使う」という要件を
- *    満たさない可能性がある。** local preference は CNE 間で伝播する属性であり、
- *    ローカルアタッチメント (TGW 直結) 由来の経路が持つ既定の local preference
- *    (0) を下げる手段が無い。そのため rule 100 で CNE 間経路を一律 300 に
- *    引き上げると、secondary リージョン自身から見ても「他 CNE 経由の経路」の
- *    ほうがローカル経路より優先されてしまい、secondary 自身が primary へ
- *    寄ってしまう可能性がある。**それが実際に起きるかどうかを観測することが
- *    このモードの目的であり、起きないことを保証する設計ではない。**
- * 3. `set-local-preference` の `value` は文字列だが、末尾に改行を付けない
- *    (ファイル冒頭の注意点 1 を参照)。
+ * **本番採用前に実機検証が必要な事項**: AWS の Route evaluation ページ
+ * (https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-evaluation.html)
+ * には local preference が一切記載されていない。同ページが定める動的ルートの
+ * 評価順序は AS_PATH 長が最初であり、local preference が AS_PATH 長より優先
+ * されるかどうかは未文書化である。boost の対象を絞り込んでいても、local
+ * preference が AS_PATH 長に優先するという前提そのものが確認されるまでは、
+ * 本番採用前に実機で優先関係を検証する必要がある。
+ *
+ * **絞り込みの必要性**: マッチ条件は primary CNE の ASN と、その primary が
+ * 属するオンプレミス拠点のルーター ASN の組み合わせ (2 条件の and)。対象は
+ * `NetworkConfig.localPreferenceBoostPairs()` が返す 4 ペアに限る。全 12 ペアに
+ * 適用すると secondary 自身が対象に含まれてしまう。例えば (edge=apne3,
+ * peer=apne1) が対象に入ると、apne3 が持つ自分のローカル TGW 経由の経路
+ * (AS_PATH 長 2 / LP 0) より、apne1 経由の経路 (AS_PATH 長 3 / boost で LP 300)
+ * のほうが優先されかねない。これは「secondary リージョンはローカル TGW を使う」
+ * という要件を壊す。この危険性は実測でも裏付けられている。
+ * `evidence/20260813/Routing Policy2設定後のrib.log` の EDGE=ap-northeast-3 と
+ * EDGE=us-west-2 に、絞り込みが無ければ boost の対象になってしまう経路が実在する
+ * ことを確認した。
+ *
+ * `set-local-preference` の `value` は文字列だが、末尾に改行を付けない
+ * (ファイル冒頭の注意点 1 を参照)。
  */
 const buildLocalPreferenceRoutingPolicy = (): Record<string, unknown> => ({
-  'routing-policy-name': ROUTING_POLICY_NAME.observeLocalPreference,
+  'routing-policy-name': ROUTING_POLICY_NAME.preferPrimaryViaLocalPreference,
   'routing-policy-description':
-    'Observe-where-local-preference-affects-route-evaluation-across-CNEs',
+    'Boost-local-preference-of-routes-that-transited-a-primary-CNE',
   'routing-policy-direction': 'inbound',
   'routing-policy-number': 100,
-  'routing-policy-rules': [
-    {
-      'rule-number': 100,
+  'routing-policy-rules': NetworkConfig.primaryCneOnPremisesBoostAsns().map(
+    ({ asn, onPremisesRouterAsn }, index) => ({
+      'rule-number': (index + 1) * 100,
       'rule-definition': {
         'match-conditions': [
-          { type: 'prefix-equals', value: '0.0.0.0/0' },
-          { type: 'prefix-in-cidr', value: '0.0.0.0/0' },
+          { type: 'asn-in-as-path', value: asn },
+          { type: 'asn-in-as-path', value: onPremisesRouterAsn },
         ],
-        'condition-logic': 'or',
+        'condition-logic': 'and',
         action: {
           type: 'set-local-preference',
           value: String(NetworkConfig.LOCAL_PREFERENCE.preferred),
         },
       },
-    },
-    ...NetworkConfig.secondaryCneOnPremisesGuardAsns().map(
-      ({ asn, onPremisesRouterAsn }, index) => ({
-        'rule-number': (index + 2) * 100,
-        'rule-definition': {
-          'match-conditions': [
-            { type: 'asn-in-as-path', value: asn },
-            { type: 'asn-in-as-path', value: onPremisesRouterAsn },
-          ],
-          'condition-logic': 'and',
-          action: {
-            type: 'set-local-preference',
-            value: String(NetworkConfig.LOCAL_PREFERENCE.deprioritized),
-          },
-        },
-      }),
-    ),
-  ],
+    }),
+  ),
 });
 
 /**
@@ -282,17 +270,14 @@ export const buildCoreNetworkPolicy = (
 
   // localPreference
   // ここには prependScope を反映しない (引数を受け取っていても無視する)。
-  // rule 100 が全件マッチで local preference を 300 に引き上げ、rule 200 以降で
-  // secondary 経由の経路だけ 50 に下げる構造のため、一部のペアだけに
-  // routing-policy を当てると、当たっていないペアの経路は既定値 0 のまま残り、
-  // 50 に下げた経路 (50 > 0) に経路選択で負けてしまい「secondary 経由を
-  // 不利にする」という意図が反転する。この方式は全ペアに当てて初めて成立するため、
-  // 常に `buildSegmentActionsForAllPairs` で全 12 ペアを使う。
+  // boost 方式は primary CNE 経由の経路だけを優先させれば要件を満たせるため、
+  // 全ペアへの一律適用は不要かつ有害。絞り込みが必要な理由は
+  // buildLocalPreferenceRoutingPolicy の JSDoc を参照。
   return {
     ...common,
     'routing-policies': [buildLocalPreferenceRoutingPolicy()],
-    'segment-actions': buildSegmentActionsForAllPairs(
-      ROUTING_POLICY_NAME.observeLocalPreference,
+    'segment-actions': buildSegmentActionsForLocalPreferenceBoost(
+      ROUTING_POLICY_NAME.preferPrimaryViaLocalPreference,
     ),
   };
 };

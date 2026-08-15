@@ -280,4 +280,29 @@ describe('派生値を導出する純関数', () => {
     );
     expect(NetworkConfig.secondaryCneOnPremisesGuardAsns()).toHaveLength(4);
   });
+
+  test('primaryCneOnPremisesBoostAsns: primary CNE の ASN とその拠点のルーター ASN の組み合わせを返す', () => {
+    expect(NetworkConfig.primaryCneOnPremisesBoostAsns()).toEqual(
+      expect.arrayContaining([
+        { asn: 64520, onPremisesRouterAsn: 65000 },
+        { asn: 64522, onPremisesRouterAsn: 65001 },
+      ]),
+    );
+    expect(NetworkConfig.primaryCneOnPremisesBoostAsns()).toHaveLength(2);
+  });
+
+  test('localPreferenceBoostPairs: peer が primary、かつ edge が別グループの 4 ペアを返す', () => {
+    const pairs = NetworkConfig.localPreferenceBoostPairs().map(
+      ({ edge, peer }) => `${edge.region}->${peer.region}`,
+    );
+    expect(new Set(pairs)).toEqual(
+      new Set([
+        'us-east-1->ap-northeast-1',
+        'us-west-2->ap-northeast-1',
+        'ap-northeast-1->us-east-1',
+        'ap-northeast-3->us-east-1',
+      ]),
+    );
+    expect(pairs).toHaveLength(4);
+  });
 });
