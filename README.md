@@ -2,11 +2,6 @@
 
 Cloud WAN の Routing Policy で「ローカル TGW を持たないリージョンがどのリージョンの TGW を経由するか」を制御できるかを実測するための検証環境です。jp ペア (apne1 / apne3) と us ペア (use1 / usw2) の合計 4 リージョン 2 ペアで構成します。
 
-背景と設計の詳細は次のドキュメントを参照してください。
-
-- [../06-routing-policy.md](../06-routing-policy.md) — Routing Policy の仕様調査
-- [../07-verification-environment.md](../07-verification-environment.md) — 検証環境の設計と検証手順
-
 ## 検証したいこと
 
 **ローカル TGW を持たないリージョンとオンプレミス相当ネットワークとの通信を、平常時は同じペアの primary TGW 経由、primary TGW の Site-to-Site VPN がダウンしたときは secondary TGW 経由にする。**
@@ -123,6 +118,8 @@ export const PREPEND_SCOPE: PrependScope = 'minimal';          // 'minimal' | 'w
 | `prepend` | prepend <br> `PREPEND_SCOPE` でエントリ数を切り替える | CNE 間トランジットの判定 <br> AS_PATH 方式の効果測定 |
 | `localPreference` | `set-local-preference` 方式 (primary CNE 経由の経路を boost) | primary 優先の効果測定 <br> local preference と AS_PATH 長の優先関係の検証 |
 
+`localPreference` モードはこの検証環境ではまだ実機デプロイしていません。上の表の用途は設計時点の狙いであり、実測結果は「検証結果」の節を参照してください。
+
 `PREPEND_SCOPE` は `prepend` モードにのみ効きます。`localPreference` は常に primary CNE 経由の 4 ペアに絞って適用されます。絞り込む理由は、全 12 ペアに適用すると secondary リージョンが自リージョンの TGW を手放しかねないためです。
 
 | スコープ | エントリ数 | 採用するペア |
@@ -160,6 +157,47 @@ Network Manager の API リージョンは `NM_REGION` で上書きできます 
 `ip route get` は `via 169.254.10.1 dev vti1` のように返ります。トンネル内側 CIDR を固定しているため、169.254.10.x なら apne1、169.254.20.x なら apne3、169.254.30.x なら use1、169.254.40.x なら usw2 と一意に読めます。
 
 `traceroute` は使えません。AWS の VGW と Cloud WAN の core edge が ICMP Time Exceeded を返さない仕様のため、ホップに出てきません。この観測手段は Site-to-Site VPN の検証環境の構成に依存しており、本番の DXGW 構成には転用できません。
+
+## 検証結果
+
+実際にデプロイして測定した結果です。証跡は `evidence/20260813/` にあります。
+
+### prepend (`minimal` スコープ) 適用時の FIB
+
+`Routing Policy2設定後のfib.log` で確認しました。
+
+| 宛先 | apne1 (jp primary) | apne3 (jp secondary) | use1 (us primary) | usw2 (us secondary) |
+|---|---|---|---|---|
+| jp (10.100.0.0/16) | ローカル | ローカル維持 | apne1 経由 | apne1 経由 |
+| us (10.200.0.0/16) | use1 経由 | use1 経由 | ローカル | ローカル維持 |
+
+secondary (apne3 / usw2) は自リージョンのローカル TGW を手放さず、ローカル TGW を持たない use1 / usw2 と apne1 / apne3 だけが primary 経由になりました。「検証したいこと」で掲げた目標は、`minimal` スコープの prepend 方式で達成されています。マッチ条件は CNE の ASN とオンプレミスルーターの ASN の 2 条件 AND です。
+
+### primary の Cloud WAN アタッチメントを削除したときの経路
+
+use1 (us ペアの primary) の TGW の Cloud WAN アタッチメントを削除して測定しました (`Routing Policy2およびLP設定後にバージニア北部TGWのCloud WANアタッチメントを削除した際の*.log`)。
+
+apne1 / apne3 の Cloud WAN FIB上の us 宛 (10.200.0.0/16) の NEXT-HOP は、削除前後で `EDGE:us-east-1` のまま変化しませんでした。切り替わったのは use1 自身のエッジ内部の NEXT-HOP だけで、削除前は自リージョンの TGW、削除後は `EDGE:us-west-2` に変わりました。RIB でも use1 の CNE ASN (64522) を含む AS_PATH `64522 64523 64515 65001` が apne3 側から引き続き観測できています。
+
+つまり use1 の TGW アタッチメントを削除しても、apne1 / apne3 は引き続き use1 を経由先として選び、use1 の Core Network Edge が usw2 へ中継する形になります。「アタッチメントを削除すればその Core Network Edge も経路から除外される」わけではないと読めますが、これは実データから逆算した推論であり、AWS ドキュメントに明記された挙動ではありません。
+
+バージニア北部オンプレミスルーター自身の東京 VPC (10.0.0.0/16) 宛の経路選択も、この間 169.254.40.x (usw2 側トンネル) に切り替わっていました。これは戻り方向 (オンプレミスから AWS へ向かう向き) の選択であり、上記の行き方向の Cloud WAN FIB とは別の観測点です。
+
+### アタッチメントを復旧したときの経路
+
+削除したアタッチメントを再作成して測定しました (`Routing Policy2およびLP設定後にバージニア北部TGWのCloud WANアタッチメントを削除して再作成した際の*.log`)。CIDR と NEXT-HOP の種別 `us-east-1/TRANSIT_GATEWAY_ROUTE_TABLE` は削除前と完全に一致しましたが、アタッチメント ID は新規に発番されました。アタッチメントを削除して作り直しているため、ID が変わること自体は想定どおりです。
+
+VPN ルーター側の BGP セッションの Up 時間は削除前から単調に増加しており、アタッチメントの削除と再作成の間、IPsec トンネルと BGP セッション自体は切断されていませんでした。
+
+### AS_PATH が等長になる箇所の選択結果
+
+Routing Policy 未適用時の RIB (`Routing Policy未設定時のrib.log`) で、us 宛のローカル経路を持たない apne1 から見た候補に、use1 経由の AS_PATH `64522 64514 65001` (長さ 3) と usw2 経由の AS_PATH `64523 64515 65001` (長さ 3) の同着があることを確認しました。この回の測定では usw2 が選ばれましたが (`Routing Policy未設定時のfib.log`)、同一条件での再測定はしておらず、選択が毎回同じになるかは未確認です。
+
+### `localPreference` モードのデプロイ状況
+
+`ROUTING_POLICY_MODE` は本検証を通じて `prepend` のまま運用しており、Cloud WAN Routing Policy の `set-local-preference` を使う `localPreference` モードは実機の Core Network Policy には一度もデプロイしていません。`evidence/20260813/` の RIB を確認したところ、local preference の値はどのファイルでも全経路が既定値の `0` のままで、非ゼロの値は記録されていません。
+
+Local Preference boost 方式の交差項リスクの分析 (別グループの primary とオンプレミス ASN を組み合わせると secondary が自リージョンの TGW を手放しうるという想定) は、実測した AS_PATH の構造にこの設計を適用した場合の論理的な帰結です。「実機で `set-local-preference` を適用して観測した結果」ではありません。
 
 ## VPN ルーター上での操作
 
