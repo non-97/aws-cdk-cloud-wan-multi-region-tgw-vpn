@@ -24,7 +24,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
             {
               "action": {
                 "association-method": "constant",
-                "segment": "verification",
+                "segment": "workload",
               },
               "condition-logic": "or",
               "conditions": [
@@ -32,10 +32,10 @@ exports[`CoreNetworkStack snapshot 1`] = `
                   "key": "cloudwan-seg",
                   "operator": "equals",
                   "type": "tag-value",
-                  "value": "verification",
+                  "value": "workload",
                 },
               ],
-              "description": "attach verification segment by tag",
+              "description": "attach workload segment by tag",
               "rule-number": 100,
             },
           ],
@@ -173,7 +173,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
                   "deprioritizeSecondaryTransit",
                 ],
               },
-              "segment": "verification",
+              "segment": "workload",
             },
             {
               "action": "associate-routing-policy",
@@ -184,7 +184,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
                   "deprioritizeSecondaryTransit",
                 ],
               },
-              "segment": "verification",
+              "segment": "workload",
             },
             {
               "action": "associate-routing-policy",
@@ -195,7 +195,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
                   "deprioritizeSecondaryTransit",
                 ],
               },
-              "segment": "verification",
+              "segment": "workload",
             },
             {
               "action": "associate-routing-policy",
@@ -206,7 +206,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
                   "deprioritizeSecondaryTransit",
                 ],
               },
-              "segment": "verification",
+              "segment": "workload",
             },
           ],
           "segments": [
@@ -218,7 +218,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
                 "us-west-2",
               ],
               "isolate-attachments": false,
-              "name": "verification",
+              "name": "workload",
               "require-attachment-acceptance": false,
             },
           ],
@@ -504,7 +504,7 @@ exports[`RegionStack (apne1) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "VpcArn": {
@@ -762,7 +762,7 @@ exports[`RegionStack (apne1) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayArn": {
@@ -931,7 +931,7 @@ exports[`RegionStack (apne1) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayRouteTableArn": {
@@ -2813,7 +2813,7 @@ exports[`RegionStack (apne3) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "VpcArn": {
@@ -3071,7 +3071,7 @@ exports[`RegionStack (apne3) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayArn": {
@@ -3240,7 +3240,7 @@ exports[`RegionStack (apne3) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayRouteTableArn": {
@@ -4461,7 +4461,7 @@ exports[`RegionStack (use1) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "VpcArn": {
@@ -4719,7 +4719,7 @@ exports[`RegionStack (use1) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayArn": {
@@ -4888,7 +4888,7 @@ exports[`RegionStack (use1) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayRouteTableArn": {
@@ -6770,7 +6770,7 @@ exports[`RegionStack (usw2) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "VpcArn": {
@@ -7028,7 +7028,7 @@ exports[`RegionStack (usw2) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayArn": {
@@ -7197,7 +7197,7 @@ exports[`RegionStack (usw2) snapshot 1`] = `
         "Tags": [
           {
             "Key": "cloudwan-seg",
-            "Value": "verification",
+            "Value": "workload",
           },
         ],
         "TransitGatewayRouteTableArn": {

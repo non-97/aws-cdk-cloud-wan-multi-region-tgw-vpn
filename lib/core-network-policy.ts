@@ -58,7 +58,7 @@ const buildCommonPolicy = (): Record<string, unknown> => ({
   'attachment-policies': [
     {
       'rule-number': 100,
-      description: 'attach verification segment by tag',
+      description: 'attach workload segment by tag',
       'condition-logic': 'or',
       conditions: [
         {

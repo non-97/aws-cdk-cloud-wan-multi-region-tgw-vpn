@@ -202,7 +202,7 @@ export const LOCAL_PREFERENCE = {
 /** Cloud WAN の固定値 */
 export const CLOUD_WAN = {
   /** アタッチメントを収容する単一セグメントの名前 */
-  segmentName: "verification",
+  segmentName: "workload",
   /** セグメント自動割当に使うアタッチメントのタグキー */
   attachmentTagKey: "cloudwan-seg",
   /** Cloud WAN 直アタッチ VPC / TGW 配下 VPC のルートテーブルが Cloud WAN / TGW へ向ける宛先 */
