@@ -109,7 +109,7 @@ Cloud WAN のアタッチメントは削除に時間がかかり、試行錯誤�
 
 ```ts
 export const ROUTING_POLICY_MODE: RoutingPolicyMode = 'off';   // 'off' | 'prepend' | 'localPreference'
-export const PREPEND_SCOPE: PrependScope = 'minimal';          // 'minimal' | 'withPrimaryFallback' | 'all'
+export const PREPEND_SCOPE: PrependScope = 'withPrimaryFallback'; // 'minimal' | 'withPrimaryFallback' | 'all'
 ```
 
 | モード | 内容 | 用途 |
@@ -164,6 +164,8 @@ Network Manager の API リージョンは `NM_REGION` で上書きできます 
 
 ### prepend (`minimal` スコープ) 適用時の FIB
 
+この節の測定は `PREPEND_SCOPE = 'minimal'` 固定で行いました。リポジトリの現在の既定値は `withPrimaryFallback` であり、以下の測定結果はその既定値では取り直していません。
+
 `policy2-fib.log` で確認しました。
 
 | 宛先 | apne1 (jp primary) | apne3 (jp secondary) | use1 (us primary) | usw2 (us secondary) |
@@ -172,6 +174,8 @@ Network Manager の API リージョンは `NM_REGION` で上書きできます 
 | us (10.200.0.0/16) | use1 経由 | use1 経由 | ローカル | ローカル維持 |
 
 secondary (apne3 / usw2) は自リージョンのローカル TGW を手放さず、ローカル TGW を持たない use1 / usw2 と apne1 / apne3 だけが primary 経由になりました。「検証したいこと」で掲げた目標は、`minimal` スコープの prepend 方式で達成されています。マッチ条件は CNE の ASN とオンプレミスルーターの ASN の 2 条件 AND です。
+
+ただし `minimal` は、primary の TGW / VPN が落ちるフェイルオーバー時に AS_PATH 長のタイを生みます。`prependAsnList` が1要素の場合、primary (例: use1) が secondary (usw2) から中継する経路と、他 CNE が secondary から直接受け取る経路が同じ長さになり得るためです (詳細は次の節)。このタイは AWS の Route evaluation ページが明記する「deterministically random」なタイブレークに委ねられます。`withPrimaryFallback` にすると、primary が secondary から受信する時点で既に prepend が適用され中継後も引き継がれるため、タイが解消します。**この結論は AS_PATH 長の計算と、CNE 間トランジットの発生 / prepend の改変が中継後も引き継がれるという2つの実機確認済みの事実からの推論であり、`withPrimaryFallback` を実際にデプロイしたデタッチ検証はまだ行っていません。**
 
 ### primary の Cloud WAN アタッチメントを削除したときの経路
 
@@ -182,6 +186,8 @@ apne1 / apne3 の Cloud WAN FIB上の us 宛 (10.200.0.0/16) の NEXT-HOP は、
 つまり use1 の TGW アタッチメントを削除しても、apne1 / apne3 は引き続き use1 を経由先として選び、use1 の Core Network Edge が usw2 へ中継する形になります。「アタッチメントを削除すればその Core Network Edge も経路から除外される」わけではないと読めますが、これは実データから逆算した推論であり、AWS ドキュメントに明記された挙動ではありません。
 
 バージニア北部オンプレミスルーター自身の東京 VPC (10.0.0.0/16) 宛の経路選択も、この間 169.254.40.x (usw2 側トンネル) に切り替わっていました。これは戻り方向 (オンプレミスから AWS へ向かう向き) の選択であり、上記の行き方向の Cloud WAN FIB とは別の観測点です。
+
+この検証は旧い local preference 設定 (rule 100 で全件を引き上げ secondary 一致分を下げ直す方式) と prepend `minimal` を両方適用した状態で行っており、観測された「primary 経由の迂回」が `minimal` の prepend 単独に起因するのか、旧 LP 設定の影響なのかはこのログからは切り分けられません。AS_PATH 長の計算では、この局面での東京 (apne1) の代替はオレゴン (usw2) 直接 (長さ4) と use1 中継 (長さ4、`minimal` では prepend されない) が同点になり、`withPrimaryFallback` にすればこのタイが解消するはずですが、その組み合わせでの再検証は未実施です。
 
 ### アタッチメントを復旧したときの経路
 
@@ -314,6 +320,7 @@ node_modules/.bin/jest
 - `set-local-preference` の値に改行が含まれないこと
 - `attachment-routing-policy-rules` と `routing-policy-label` が出力に含まれないこと
 - `PREPEND_SCOPE` ごとの `segment-actions` が `minimal` 4 件 / `withPrimaryFallback` 6 件 / `all` 12 件と一致すること
+- `secondaryCneOnPremisesGuardAsns()` が secondary CNE ごとに自グループのオンプレミスルーター ASN とだけ組になる2件を返し、交差項を含まないこと
 - `localPreference` はどの `PREPEND_SCOPE` を指定しても `segment-actions` が primary CNE 経由の 4 ペア固定であること
 
 ## 設計上の重要な制約

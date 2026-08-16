@@ -161,7 +161,7 @@ describe('buildCoreNetworkPolicy (off)', () => {
 
 describe('buildCoreNetworkPolicy (prepend)', () => {
   test.each(PREPEND_SCOPES)(
-    '%s: routing-policies が 1 件、ルールが 4 本 (スコープはルールに影響しない)',
+    '%s: routing-policies が 1 件、ルールが 2 本 (スコープはルールに影響しない)',
     (scope) => {
       const policy = CoreNetworkPolicy.buildCoreNetworkPolicy(
         'prepend',
@@ -170,12 +170,12 @@ describe('buildCoreNetworkPolicy (prepend)', () => {
       expect(policy['routing-policies']).toHaveLength(1);
       expect(
         policy['routing-policies'][0]['routing-policy-rules'],
-      ).toHaveLength(4);
+      ).toHaveLength(2);
     },
   );
 
   test.each(PREPEND_SCOPES)(
-    '%s: match-conditions が secondaryCneOnPremisesGuardAsns() の全組み合わせと AND で一致し、全ルールが prepend-asn-list を持つ',
+    '%s: match-conditions が secondaryCneOnPremisesGuardAsns() の組み合わせと AND で一致し、全ルールが prepend-asn-list を持つ',
     (scope) => {
       const policy = CoreNetworkPolicy.buildCoreNetworkPolicy(
         'prepend',
@@ -195,7 +195,7 @@ describe('buildCoreNetworkPolicy (prepend)', () => {
           ...NetworkConfig.secondaryCneOnPremisesGuardAsns(),
         ]),
       );
-      expect(matchedPairs).toHaveLength(4);
+      expect(matchedPairs).toHaveLength(2);
       rules.forEach((rule: AnyPolicy) => {
         expect(rule['rule-definition']['condition-logic']).toBe('and');
         expect(rule['rule-definition'].action.type).toBe('prepend-asn-list');

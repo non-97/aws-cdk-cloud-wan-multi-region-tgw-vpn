@@ -106,7 +106,7 @@ exports[`CoreNetworkStack snapshot 1`] = `
                     "match-conditions": [
                       {
                         "type": "asn-in-as-path",
-                        "value": 64521,
+                        "value": 64523,
                       },
                       {
                         "type": "asn-in-as-path",
@@ -116,54 +116,21 @@ exports[`CoreNetworkStack snapshot 1`] = `
                   },
                   "rule-number": 200,
                 },
-                {
-                  "rule-definition": {
-                    "action": {
-                      "type": "prepend-asn-list",
-                      "value": [
-                        4200000001,
-                      ],
-                    },
-                    "condition-logic": "and",
-                    "match-conditions": [
-                      {
-                        "type": "asn-in-as-path",
-                        "value": 64523,
-                      },
-                      {
-                        "type": "asn-in-as-path",
-                        "value": 65000,
-                      },
-                    ],
-                  },
-                  "rule-number": 300,
-                },
-                {
-                  "rule-definition": {
-                    "action": {
-                      "type": "prepend-asn-list",
-                      "value": [
-                        4200000001,
-                      ],
-                    },
-                    "condition-logic": "and",
-                    "match-conditions": [
-                      {
-                        "type": "asn-in-as-path",
-                        "value": 64523,
-                      },
-                      {
-                        "type": "asn-in-as-path",
-                        "value": 65001,
-                      },
-                    ],
-                  },
-                  "rule-number": 400,
-                },
               ],
             },
           ],
           "segment-actions": [
+            {
+              "action": "associate-routing-policy",
+              "edge-location-association": {
+                "edge-location": "ap-northeast-1",
+                "peer-edge-location": "ap-northeast-3",
+                "routing-policy-names": [
+                  "deprioritizeSecondaryTransit",
+                ],
+              },
+              "segment": "workload",
+            },
             {
               "action": "associate-routing-policy",
               "edge-location-association": {
@@ -191,6 +158,17 @@ exports[`CoreNetworkStack snapshot 1`] = `
               "edge-location-association": {
                 "edge-location": "us-east-1",
                 "peer-edge-location": "ap-northeast-3",
+                "routing-policy-names": [
+                  "deprioritizeSecondaryTransit",
+                ],
+              },
+              "segment": "workload",
+            },
+            {
+              "action": "associate-routing-policy",
+              "edge-location-association": {
+                "edge-location": "us-east-1",
+                "peer-edge-location": "us-west-2",
                 "routing-policy-names": [
                   "deprioritizeSecondaryTransit",
                 ],

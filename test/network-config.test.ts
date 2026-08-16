@@ -269,16 +269,14 @@ describe('派生値を導出する純関数', () => {
     );
   });
 
-  test('secondaryCneOnPremisesGuardAsns: secondary CNE の ASN とオンプレミス拠点のルーター ASN の全組み合わせを返す', () => {
+  test('secondaryCneOnPremisesGuardAsns: secondary CNE ごとに自グループのオンプレミスルーター ASN とだけ組になる', () => {
     expect(NetworkConfig.secondaryCneOnPremisesGuardAsns()).toEqual(
       expect.arrayContaining([
         { asn: 64521, onPremisesRouterAsn: 65000 },
-        { asn: 64521, onPremisesRouterAsn: 65001 },
-        { asn: 64523, onPremisesRouterAsn: 65000 },
         { asn: 64523, onPremisesRouterAsn: 65001 },
       ]),
     );
-    expect(NetworkConfig.secondaryCneOnPremisesGuardAsns()).toHaveLength(4);
+    expect(NetworkConfig.secondaryCneOnPremisesGuardAsns()).toHaveLength(2);
   });
 
   test('primaryCneOnPremisesBoostAsns: primary CNE の ASN とその拠点のルーター ASN の組み合わせを返す', () => {

@@ -133,8 +133,9 @@ const buildSegmentActionsForLocalPreferenceBoost = (
 
 /**
  * prepend 方式の routing-policy (1 件)。
- * secondary CNE の ASN × オンプレミス拠点のルーター ASN の全組み合わせだけ
- * ルールを生成し、rule-number は 100 刻みで採番する。
+ * secondary CNE ごとに、その secondary が属するオンプレミス拠点のルーター ASN と
+ * だけ組んでルールを生成する (直積にはしない。2 件になる)。rule-number は
+ * 100 刻みで採番する。
  *
  * マッチ条件は `asn-in-as-path` を 2 つ `and` で組み合わせる: (1) secondary CNE
  * の ASN、(2) オンプレミスルーターの ASN。(1) だけだと「secondary CNE を経由した
@@ -144,6 +145,11 @@ const buildSegmentActionsForLocalPreferenceBoost = (
  * 乗らず、オンプレミスルーターの ASN (発信元 = AS_PATH の起点) は乗らないため、(2) を
  * `and` で足すことで発信元の経路を確実に除外できる (2026-08 実機評価で確認: 詳細は
  * `evidence/20260813/` を参照)。
+ *
+ * かつては secondary の ASN と全拠点のオンプレミスルーター ASN の直積 (4 ルール、
+ * 交差項を含む) を生成していたが、交差項は追跡できたどの経路選択にも影響しないことが
+ * 実測で確認された。詳細は `NetworkConfig.secondaryCneOnPremisesGuardAsns` の
+ * JSDoc を参照。
  *
  * オンプレミス側の CIDR を列挙する (`prefix-equals`) 方式は採用しなかった:
  * オンプレミス拠点にサブネットが増えても列挙を追従できなければ保護対象から漏れる。

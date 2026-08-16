@@ -243,40 +243,47 @@ export const regionConfigOf = (
 };
 
 /**
- * secondary CNE の ASN と、オンプレミス各拠点のルーターの ASN の全組み合わせ。
- * Routing Policy のルール生成に使う。オンプレミス側ルーターの ASN を条件に含めることで、
- * 「secondary CNE を経由した経路」と「secondary CNE 自身が発信した経路」を区別する
- * (前者だけを対象にしたい。詳細は core-network-policy.ts のコメント参照)。
- * secondary はどの拠点宛の経路であっても中継されると同様に望ましくないため、
- * 「自分のペアの拠点だけ」ではなく全拠点との組み合わせを生成する
+ * secondary CNE の ASN と、その secondary が属するオンプレミス拠点のルーター ASN の
+ * 組み合わせ。Routing Policy のルール生成に使う。オンプレミス側ルーターの ASN を条件に
+ * 含めることで、「secondary CNE を経由した経路」と「secondary CNE 自身が発信した経路」を
+ * 区別する (前者だけを対象にしたい。詳細は core-network-policy.ts のコメント参照)。
+ *
+ * 直積 (secondary × 全拠点) にはしない。かつては全拠点との組み合わせ (交差項を含む4件)
+ * を生成していたが、実測で交差項は追跡できたどの経路選択にも影響しないことが確認された。
+ * 受信側 CNE は常により短い代替を持っている
+ * (自前のローカルリンク、または競合する経路の元になった primary の直接経路のいずれか) ため、
+ * 交差項ルールを削除しても結果は変わらない
+ * (`evidence/20260813/baseline-rib.log` の `EDGE=us-east-1` の
+ * `10.200.0.0/16 via ap-northeast-3`: `64521 64523 64515 65001` で確認。
+ * この経路は apne3+US オンプレの交差項にも usw2+US オンプレの自然項にも同時に
+ * マッチするが、いずれの場合も use1 自身の直接経路 (長さ3、prepend なし) が
+ * 全ての受信側にとって既にこの中継経路より短い。当時の4ルール構成での rule 番号は
+ * `evidence/20260813/policy2-corepolicy.json` を参照)。
+ * `primaryCneOnPremisesBoostAsns` と同じ形にする
  */
 export const secondaryCneOnPremisesGuardAsns = (): readonly {
   readonly asn: number;
   readonly onPremisesRouterAsn: number;
-}[] => {
-  const secondaryAsns = REGION_CONFIGS.filter(
-    (r) => r.onPremisesRole === "secondary"
-  ).map((r) => r.cneAsn);
-  const onPremisesRouterAsns = Object.values(ON_PREMISES_NETWORKS).map(
-    (n) => n.routerAsn
-  );
-  return secondaryAsns.flatMap((asn) =>
-    onPremisesRouterAsns.map((onPremisesRouterAsn) => ({
-      asn,
-      onPremisesRouterAsn,
-    }))
-  );
-};
+}[] =>
+  REGION_CONFIGS.filter((r) => r.onPremisesRole === "secondary").map((r) => ({
+    asn: r.cneAsn,
+    onPremisesRouterAsn: ON_PREMISES_NETWORKS[r.onPremisesNetwork].routerAsn,
+  }));
 
 /**
  * primary CNE の ASN と、その primary が属するオンプレミス拠点のルーター ASN の
- * 組み合わせ。`secondaryCneOnPremisesGuardAsns` (secondary × 全拠点の直積) とは
- * 異なり、直積にしない。各 primary は自分のグループの拠点とだけ組にする。
- * 別グループの拠点と組ませる交差項を作ると、他リージョン経由で実際に届いている
- * 経路 (ローカル TGW 経由よりも AS_PATH が長い) まで boost の対象になってしまい、
- * 実害が出ることを実測で確認済みである。詳細は
+ * 組み合わせ。`secondaryCneOnPremisesGuardAsns` と同じく直積にせず、各 primary は
+ * 自分のグループの拠点とだけ組にする。別グループの拠点と組ませる交差項を作ると、
+ * 他リージョン経由で実際に届いている経路 (ローカル TGW 経由よりも AS_PATH が長い)
+ * まで boost の対象になってしまい、実害が出ることを実測で確認済みである。詳細は
  * `evidence/20260813/policy2-rib.log` の EDGE=us-west-2 と
  * EDGE=ap-northeast-3 を参照。
+ *
+ * `secondaryCneOnPremisesGuardAsns` 側も交差項を持たないが、削除した理由は異なる。
+ * 同関数の交差項は「作ると boost のように反転の実害が出るから」ではなく、
+ * 「追跡できたどの経路選択にも影響しないことが実測で確認されたから」削除した。
+ * 詳細は同関数の JSDoc を参照。両者が結果的に同じ形になったのは偶然であり、
+ * 一方の削除理由をもう一方に当てはめてはならない。
  */
 export const primaryCneOnPremisesBoostAsns = (): readonly {
   readonly asn: number;
@@ -329,58 +336,55 @@ export type PrependScope = "minimal" | "withPrimaryFallback" | "all";
  *   確認した
  * - **改変の引き継ぎ**: 引き継がれる。他エッジが適用した prepend 済み ASN
  *   `4200000001` が中継先の AS_PATH に乗ったまま観測されたことを同 rib.log で
- *   確認した
+ *   確認した (`EDGE=us-east-1` の `10.11.0.0/16 via us-west-2`:
+ *   `64523 4200000001 64521 64513`)。
  *
- * この 2 事項が確認された結果、後述の判定表を機械的に適用すると
- * `withPrimaryFallback` が必要という結論になる。一方で、通常運用時の実測では、
- * 現在の構成である `minimal` で意図通り secondary の経路が deprioritize
- * されている。加えて、Routing Policy 2 (prepend) と旧 LP 設定を両方適用した
- * 状態で primary (us-east-1) の TGW の Cloud WAN アタッチメントを削除する detach
- * 検証を行ったところ、判定表が想定する症状そのもの、すなわちローカル経路を失った
- * primary を経由する迂回が観測された。
- * `evidence/20260813/policy2-lp-use1-tgw-detach-fib.log` では、apne1 と apne3 の
- * FIB で 10.200.0.0/16 の next-hop が EDGE:us-east-1 のままになっている。
- * 削除したのは us-east-1 の TGW アタッチメントであって CNE 自体ではないため、
- * us-east-1 は 10.200.0.0/16 へのローカル経路を失った状態でメッシュに残り、
- * usw2 から学習した経路を中継し続けている。この観測は LP 設定も同時に適用した
- * 状態のものであり、prepend の
- * `minimal` 単独の挙動を切り分けたものではない。この食い違いを踏まえて
- * `PREPEND_SCOPE` の値を引き上げるべきかは、この訂正とは別に判断する。値そのもの
- * はこの訂正では変更しない。
+ * **既定値は `withPrimaryFallback` を推奨する。** 理由は、`minimal` (4 ペア) が
+ * primary の TGW / VPN が落ちるフェイルオーバーで AS_PATH 長のタイを生むためである。
+ * 例えばバージニア北部 (use1) の TGW をデタッチした場合、東京 (apne1) から見た
+ * 代替は次の2つになり、`prependAsnList` が1要素であるため両者が長さ4で同点になる。
  *
- * この 2 つを実測で切り分けるため、エントリ数を段階的に増やせるようにする。
+ * - オレゴン (usw2) 直接: `4200000001 64523 64515 65001` (長さ4)
+ * - use1 中継 (usw2 発を relay): `64522 64523 64515 65001` (長さ4。
+ *   `(use1, peer=usw2)` ペアが `minimal` の対象外のため prepend されない)
+ *
+ * 同点は AWS の Route evaluation ページが明記する「deterministically random」な
+ * タイブレークに委ねられる
+ * (https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-evaluation.html)。
+ * `withPrimaryFallback` (6 ペア) にすると `(use1, peer=usw2)` が対象に入り、
+ * use1 が usw2 から受信する時点で既に prepend が適用され、中継後も引き継がれる
+ * (上記の改変の引き継ぎの事実による)。結果、オレゴン直接 (長さ4) と use1 中継
+ * (長さ5) の差が1ホップ分確実に生まれ、タイが解消する。
+ *
+ * **この結論は AS_PATH 長の計算と、上記2つの実機確認済みの事実から導いた設計上の
+ * 判断であり、`withPrimaryFallback` + 現行の prepend 実装 + 実際のデタッチという
+ * 組み合わせそのものを実機で再検証したものではない。** 2026-08 時点の実測
+ * (`evidence/20260813/`) はすべて `minimal` 固定で行っており、`withPrimaryFallback`
+ * を実際にデプロイしたデタッチ検証はまだ無い。
+ *
  * 3 段階の定義 (いずれも X !== Y):
  *
  * - **`minimal`** (4 ペア): 述語は `Y.onPremisesRole === 'secondary' かつ
- *   X.onPremisesNetwork !== Y.onPremisesNetwork`。CNE 間トランジットが無ければ
- *   これで足りる。primary リージョンは自分のローカル TGW から AS_PATH 長 2 で
- *   経路を受け取るため、リモート CNE 経由 (長さ 3) に prepend 無しで勝つ。
- *   したがってローカル経路を持たない CNE (=対象オンプレミスネットワークの
- *   ペアに属さない CNE) だけがポリシーを必要とする。
- * - **`withPrimaryFallback`** (6 ペア): 述語は `Y.onPremisesRole === 'secondary'`
+ *   X.onPremisesNetwork !== Y.onPremisesNetwork`。primary の VPN / TGW が
+ *   健全な間は secondary 経路を deprioritize するだけで足りるが、上記のとおり
+ *   primary 側の障害時にタイが生じ得る
+ * - **`withPrimaryFallback`** (6 ペア、推奨): 述語は `Y.onPremisesRole === 'secondary'`
  *   のみ (`minimal` の 4 ペア + 同じペアの primary が受け取る分 2 ペア)。
- *   トランジットがあり、かつ改変後の AS_PATH が再広報で引き継がれる場合に必要。
  *   primary の VPN が断のとき、primary は secondary から学習した経路を他 CNE へ
- *   再広報する。primary 側で先に prepend しておかないと、下流で「secondary 直」と
- *   「primary 経由」が同じ AS_PATH 長になって経路選択が不定に戻ってしまう。
- * - **`all`** (12 ペア): 述語は常に true。トランジットがあり、かつ改変が
- *   再広報で引き継がれない場合に必要。改変が引き継がれない以上、受信側の
- *   CNE ごとに個別に判定するしかない。
+ *   再広報する。primary 側で先に prepend しておくことで、下流で「secondary 直」と
+ *   「primary 経由」が同じ AS_PATH 長になる問題を避ける
+ * - **`all`** (12 ペア): 述語は常に true。改変の引き継ぎが成立しない場合に備えた
+ *   最終手段。上記のとおり引き継ぎは確認済みのため、通常は `withPrimaryFallback`
+ *   で足りる
  *
- * 実験手順: `minimal` から始めて primary の VPN 接続を落とし、ローカル経路を
- * 持たない CNE の FIB (`get-network-routes`) を確認する。効果確認は必ず FIB で
- * 行う。RIB は、クエリ対象のエッジ自身がこれから適用する分については適用前の
- * 情報を返すが、他エッジが中継前に既に適用した改変は RIB にも反映される。
- * この区別自体は AWS ドキュメントに明記が無く、実データから逆算した推論である。
- * secondary 直の経路に決まればトランジット無しで確定。primary 経由と同点なら
- * `withPrimaryFallback` に上げて再測定する。AS_PATH 長と MED が等しい場合は
- * タイブレークで不定になる。AWS の Route evaluation ページに
- * 「a single attachment will be chosen in a deterministically random manner」
- * とある
- * (https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-evaluation.html)。
- * それでも解決しなければ `all` に上げる。
+ * `withPrimaryFallback` を実機で再検証する場合は、primary の VPN 接続を落とし、
+ * ローカル経路を失った CNE の FIB (`get-network-routes`) で意図通り secondary
+ * 側に切り替わるかを確認する。効果確認は必ず FIB で行う。RIB は、クエリ対象の
+ * エッジ自身がこれから適用する分については適用前の情報を返すが、他エッジが
+ * 中継前に既に適用した改変は RIB にも反映される。この区別自体は AWS ドキュメントに
+ * 明記が無く、実データから逆算した推論である。
  */
-export const PREPEND_SCOPE: PrependScope = "minimal";
+export const PREPEND_SCOPE: PrependScope = "withPrimaryFallback";
 
 /**
  * (受信 CNE, 送信 CNE) のペア。segment-actions の edge-location / peer-edge-location
